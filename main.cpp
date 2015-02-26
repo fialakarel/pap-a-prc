@@ -12,6 +12,7 @@ using namespace std;
 
 int ** matA = NULL;
 int ** matB = NULL;
+int ** matC = NULL;
 
 string matA_file;
 string matB_file;
@@ -27,6 +28,62 @@ typedef struct {
 } Coord;
 */
 
+void mainProccesLoop() {
+    for (int i = 0; i < matA_m; i++) {
+        for (int j = 0; j < matB_p; j++) {
+            int result = 0;
+            
+            for (int k = 0; k < matA_n; k++) {
+                    result += matA[i][k] * matB[k][j];
+                    //cout << result << " " << matA[i][k] << " " <<  matB[k][j] << endl << flush;
+            }
+            
+            matC[i][j] = result;
+        }
+    }
+}
+
+void debugMatrix() {
+    cout << endl << "matA: " << endl;
+    for(int i = 0; i < matA_m; i++) {
+        for(int j = 0; j < matA_n; j++) {
+            cout << matA[i][j] << " ";
+        }
+        cout << endl;
+    }
+    cout << endl << "matB: " << endl;
+    for(int i = 0; i < matB_n; i++) {
+        for(int j = 0; j < matB_p; j++) {
+            cout << matB[i][j] << " ";
+        }
+        cout << endl;
+    }
+    cout << endl << "matC: " << endl;
+    for(int i = 0; i < matA_m; i++) {
+        for(int j = 0; j < matB_p; j++) {
+            cout << matC[i][j] << " ";
+        }
+        cout << endl;
+    }
+    cout << endl;
+}
+
+int ** allocMatrix(int m, int n) {
+    int ** matrix = new int*[m];
+    
+    for (int i=0; i<m; i++) {
+        matrix[i] = new int[n];
+    }
+    
+    for(int i = 0; i < m; i++) {
+        for(int j = 0; j < n; j++) {
+            matrix[i][j] = 0;
+        }
+    }
+    
+    return matrix;
+}
+
 int ** loadFromFile(int m, int n, string filePath) {
     string line;
     ifstream file(filePath);
@@ -36,11 +93,7 @@ int ** loadFromFile(int m, int n, string filePath) {
     if (file.is_open()) {
         // Alloc triangle
         
-        int ** matrix = new int*[m];
-        
-        for (int i=0; i<m; i++) {
-            matrix[i] = new int[n];
-        }
+        int ** matrix = allocMatrix(m, n);
         
         
         int number;
@@ -73,6 +126,21 @@ void init() {
     // initialization
 }
 
+void cleanUp() {
+    
+    // free matA
+    for (int i=0; i<matA_m; i++) {
+        delete(matA[i]);
+    }
+    delete(matA);
+    
+    // free matB
+    for (int i=0; i<matB_n; i++) {
+        delete(matB[i]);
+    }
+    delete(matB);
+}
+
 
 int main (int argc, char **argv) {
 
@@ -84,45 +152,34 @@ int main (int argc, char **argv) {
     
     // Store arguments from command line
     // Format is ./a.out m n matA n p matB
-    string matA_file = argv[3];
-    string matB_file = argv[6];
-    int matA_m = stoi(argv[1]);
-    int matA_n = stoi(argv[2]);
-    int matB_n = stoi(argv[4]);
-    int matB_p = stoi(argv[5]);
+    matA_file = argv[3];
+    matB_file = argv[6];
+    matA_m = stoi(argv[1]);
+    matA_n = stoi(argv[2]);
+    matB_n = stoi(argv[4]);
+    matB_p = stoi(argv[5]);
     
     // debug print
-    cout << matA_m << "x" << matA_n << " -- " << matA_file << endl;
+    cout << endl << matA_m << "x" << matA_n << " -- " << matA_file << endl;
     cout << matB_n << "x" << matB_p << " -- " << matB_file << endl;
     
     
     // Init default values
     init();
     
+    // load input matrix
     matA = loadFromFile(matA_m, matA_n, matA_file);
     matB = loadFromFile(matB_n, matB_p, matB_file);
+    matC = allocMatrix(matA_m, matB_p);
     
-    cout << "matA: " << endl;
-    for(int i = 0; i < matA_m; i++) {
-        for(int j = 0; j < matA_m; j++) {
-            cout << matA[i][j] << " ";
-        }
-        cout << endl;
-    }
-    cout << endl << "matB: " << endl;
-    for(int i = 0; i < matB_n; i++) {
-        for(int j = 0; j < matB_p; j++) {
-            cout << matB[i][j] << " ";
-        }
-        cout << endl;
-    }
-        
     // Run main procces
-    //mainProccesLoop();
-    
+    mainProccesLoop();
+
+    // debugMatrix
+    //debugMatrix();    
     
     // Clean up data
-    //cleanUp();
+    cleanUp();
     
     return 0;
 }
