@@ -11,3 +11,5 @@ matrix.log
 matrix.pdf
 matrix.synctex.gz
 matrix.toc
+
+logs/*

@@ -29,6 +29,15 @@ void mainProccesLoop() {
     trivial();
 }
 
+void catMatrix(int ** matrix, int size) {
+    for(int i = 0; i < size; i++) {
+        for(int j = 0; j < size; j++) {
+            cout << matC[i][j] << " ";
+        }
+        cout << endl;
+    }
+    cout << endl;
+}
 
 void debugMatrix() {
     cout << endl << "matA: " << endl;
@@ -147,8 +156,8 @@ int main (int argc, char **argv) {
     matB_p = stoi(argv[5]);
     
     // debug print
-    cout << endl << matA_m << "x" << matA_n << " -- " << matA_file << endl;
-    cout << matB_n << "x" << matB_p << " -- " << matB_file << endl;
+    //cout << endl << matA_m << "x" << matA_n << " -- " << matA_file << endl;
+    //cout << matB_n << "x" << matB_p << " -- " << matB_file << endl;
     
     
     // Init default values
@@ -163,9 +172,11 @@ int main (int argc, char **argv) {
     mainProccesLoop();
 
     // debugMatrix
-    if (matA_m < 11) {
+    /*if (matA_m < 11) {
         debugMatrix();    
-    }
+    }*/
+    
+    catMatrix(matC, matA_m);
     
     // Clean up data
     cleanUp();
