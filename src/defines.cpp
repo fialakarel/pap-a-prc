@@ -11,3 +11,6 @@ string matB_file;
 // matrix dimension
 int size;
 int prev_size;
+
+int *** fakeMatrix = NULL;
+int pfm = 0;

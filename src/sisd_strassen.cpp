@@ -5,6 +5,28 @@ typedef struct {
     int real_size; // hack for "static" allocation
 } matrix;
 
+
+int *** firstAlloc(int size) {
+    
+    //size = size;
+    
+    int *** matrix = new int**[26];
+    
+    for (int j=0; j<25; j++) {
+        matrix[j] = new int*[size];
+        for (int i=0; i<size; i++) {
+            matrix[j][i] = new int[size];
+        }
+    }
+    
+    return matrix;
+}
+
+int ** fakeAlloc() {
+    return fakeMatrix[(pfm++) % 25];
+}
+
+
 matrix multM(matrix a, matrix b) {
     matrix c;
     c.p = allocMatrix(a.size);
@@ -191,6 +213,8 @@ int ** strassen(int size, int ** A, int ** B) {
     matrix b;
     b.p = B;
     b.size = size;
+    
+    fakeMatrix = firstAlloc(size);
     
     matrix c = s_alg(a, b);
     
