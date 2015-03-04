@@ -64,7 +64,31 @@ void debugMatrix() {
     cout << endl;
 }
 
-int ** allocMatrix(int size) {
+int shiftSize(int size) {
+    int shifts = 0;
+    int new_size = size;
+    while (new_size > 1) {
+        //cout << "." << flush;
+        new_size>>=1;
+        shifts++;
+    }
+    while (new_size < size) {
+        //cout << "/" << flush;
+        new_size<<=1;
+    }
+    return new_size;
+}
+
+
+int ** allocMatrix(int old_size) {
+    
+    int size = old_size;
+    
+    // only for Strassen
+    #ifdef alg_sisd_strassen
+        size = shiftSize(old_size);
+    #endif
+    
     int ** matrix = new int*[size];
     
     for (int i=0; i<size; i++) {
@@ -159,6 +183,11 @@ int main (int argc, char **argv) {
     matA = loadFromFile(size, matA_file);
     matB = loadFromFile(size, matB_file);
     matC = allocMatrix(size);
+    
+    // only for Strassen
+    #ifdef alg_sisd_strassen
+        size = shiftSize(size);
+    #endif
     
     // Run main procces
     mainProccesLoop();
