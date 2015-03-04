@@ -6,30 +6,28 @@ typedef struct {
 } matrix;
 
 
-int *** firstAlloc(int size) {
+void firstAlloc() {
     
     //size = size;
     
-    int *** matrix = new int**[26];
+    fakeMatrix = new int**[27];
     
-    for (int j=0; j<25; j++) {
-        matrix[j] = new int*[size];
+    for (int j=0; j<27; j++) {
+        fakeMatrix[j] = new int*[size];
         for (int i=0; i<size; i++) {
-            matrix[j][i] = new int[size];
+            fakeMatrix[j][i] = new int[size];
         }
     }
-    
-    return matrix;
 }
 
 int ** fakeAlloc() {
-    return fakeMatrix[(pfm++) % 25];
+    return fakeMatrix[(pfm++) % 26];
 }
 
 
 matrix multM(matrix a, matrix b) {
     matrix c;
-    c.p = allocMatrix(a.size);
+    c.p = fakeAlloc();
     c.size = a.size;
     for (int i = 0; i < a.size; i++) {
         for (int j = 0; j < a.size; j++) {
@@ -45,7 +43,7 @@ matrix multM(matrix a, matrix b) {
 
 matrix subM(matrix a, matrix b) {
     matrix c;
-    c.p = allocMatrix(a.size);
+    c.p = fakeAlloc();
     c.size = a.size;
     for (int i = 0 ; i < a.size ; i++) {
         for (int j = 0 ; j < a.size ; j++) {
@@ -57,7 +55,7 @@ matrix subM(matrix a, matrix b) {
 
 matrix addM(matrix a, matrix b) {
     matrix c;
-    c.p = allocMatrix(a.size);
+    c.p = fakeAlloc();
     c.size = a.size;
     for (int i = 0 ; i < a.size ; i++) {
         for (int j = 0 ; j < a.size ; j++) {
@@ -69,7 +67,7 @@ matrix addM(matrix a, matrix b) {
 
 matrix getPart(int f1, int f2, matrix x) {
     matrix c;
-    c.p = allocMatrix(x.size/2);
+    c.p = fakeAlloc();
     c.size = x.size/2;
     int xstart = f1 * c.size ;
     int ystart = f2 * c.size ;
@@ -107,7 +105,7 @@ matrix s_alg(matrix a, matrix b) {
     if ( a.size == 1 ) {
         return multM(a, b);
     }
-    
+
     matrix a11 = getPart(0, 0, a);
     matrix a12 = getPart(0, 1, a);
     matrix a21 = getPart(1, 0, a);
@@ -137,25 +135,25 @@ matrix s_alg(matrix a, matrix b) {
     matrix m6 = s_alg(t7, t8);
     matrix m7 = s_alg(t9, t10);
 
-    cleanM(a11);
-    cleanM(a12);
-    cleanM(a21);
-    cleanM(a22);
-    cleanM(b11);
-    cleanM(b12);
-    cleanM(b21);
-    cleanM(b22);
-    
-    cleanM(t1);
-    cleanM(t2);
-    cleanM(t3);
-    cleanM(t4);
-    cleanM(t5);
-    cleanM(t6);
-    cleanM(t7);
-    cleanM(t8);
-    cleanM(t9);
-    cleanM(t10);
+//     cleanM(a11);
+//     cleanM(a12);
+//     cleanM(a21);
+//     cleanM(a22);
+//     cleanM(b11);
+//     cleanM(b12);
+//     cleanM(b21);
+//     cleanM(b22);
+//     
+//     cleanM(t1);
+//     cleanM(t2);
+//     cleanM(t3);
+//     cleanM(t4);
+//     cleanM(t5);
+//     cleanM(t6);
+//     cleanM(t7);
+//     cleanM(t8);
+//     cleanM(t9);
+//     cleanM(t10);
 
     
     
@@ -187,15 +185,15 @@ matrix s_alg(matrix a, matrix b) {
     cleanM(m5);
     cleanM(m6);
     cleanM(m7);
-    
-    cleanM(rx1);
-    cleanM(rx2);
-    cleanM(rx3);
-    cleanM(r2);
-    cleanM(r3);
-    cleanM(ry1);
-    cleanM(ry2);
-    cleanM(ry3);
+//     
+//     cleanM(rx1);
+//     cleanM(rx2);
+//     cleanM(rx3);
+//     cleanM(r2);
+//     cleanM(r3);
+//     cleanM(ry1);
+//     cleanM(ry2);
+//     cleanM(ry3);
     
     return c;
 
@@ -214,7 +212,7 @@ int ** strassen(int size, int ** A, int ** B) {
     b.p = B;
     b.size = size;
     
-    fakeMatrix = firstAlloc(size);
+    firstAlloc();
     
     matrix c = s_alg(a, b);
     
