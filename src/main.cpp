@@ -10,12 +10,6 @@ using namespace std;
 
 #include "defines.cpp"
 
-/*
-typedef struct {
-    int x;
-    int y;
-} Coord;
-*/
 
 #ifdef alg_sisd_classic
     #include "sisd_trivial.cpp"
@@ -26,10 +20,16 @@ typedef struct {
 #endif
 
 void mainProccesLoop() {
-    trivial();
+    #ifdef alg_sisd_classic
+        trivial(size, matA, matB, matC);
+    #endif
+
+    #ifdef alg_sisd_strassen
+        strassen(size, matA, matB, matC);
+    #endif
 }
 
-void catMatrix(int ** matrix, int size) {
+void printMatrix(int ** matrix, int size) {
     for(int i = 0; i < size; i++) {
         for(int j = 0; j < size; j++) {
             cout << matC[i][j] << " ";
@@ -41,22 +41,22 @@ void catMatrix(int ** matrix, int size) {
 
 void debugMatrix() {
     cout << endl << "matA: " << endl;
-    for(int i = 0; i < matA_m; i++) {
-        for(int j = 0; j < matA_n; j++) {
+    for(int i = 0; i < size; i++) {
+        for(int j = 0; j < size; j++) {
             cout << matA[i][j] << " ";
         }
         cout << endl;
     }
     cout << endl << "matB: " << endl;
-    for(int i = 0; i < matB_n; i++) {
-        for(int j = 0; j < matB_p; j++) {
+    for(int i = 0; i < size; i++) {
+        for(int j = 0; j < size; j++) {
             cout << matB[i][j] << " ";
         }
         cout << endl;
     }
     cout << endl << "matC: " << endl;
-    for(int i = 0; i < matA_m; i++) {
-        for(int j = 0; j < matB_p; j++) {
+    for(int i = 0; i < size; i++) {
+        for(int j = 0; j < size; j++) {
             cout << matC[i][j] << " ";
         }
         cout << endl;
@@ -64,15 +64,15 @@ void debugMatrix() {
     cout << endl;
 }
 
-int ** allocMatrix(int m, int n) {
-    int ** matrix = new int*[m];
+int ** allocMatrix(int size) {
+    int ** matrix = new int*[size];
     
-    for (int i=0; i<m; i++) {
-        matrix[i] = new int[n];
+    for (int i=0; i<size; i++) {
+        matrix[i] = new int[size];
     }
     
-    for(int i = 0; i < m; i++) {
-        for(int j = 0; j < n; j++) {
+    for(int i = 0; i < size; i++) {
+        for(int j = 0; j < size; j++) {
             matrix[i][j] = 0;
         }
     }
@@ -80,7 +80,7 @@ int ** allocMatrix(int m, int n) {
     return matrix;
 }
 
-int ** loadFromFile(int m, int n, string filePath) {
+int ** loadFromFile(int size, string filePath) {
     string line;
     ifstream file(filePath);
     int linenumber = 0;
@@ -89,7 +89,7 @@ int ** loadFromFile(int m, int n, string filePath) {
     if (file.is_open()) {
         // Alloc triangle
         
-        int ** matrix = allocMatrix(m, n);
+        int ** matrix = allocMatrix(size);
         
         
         int number;
@@ -101,7 +101,7 @@ int ** loadFromFile(int m, int n, string filePath) {
             ss << line;
             
             // Load numbers to triangle
-            for (int i=0; i<n; i++) {
+            for (int i=0; i<size; i++) {
                 // Get number from line
                 ss >> number;
                 // Save number to triangle
@@ -125,13 +125,13 @@ void init() {
 void cleanUp() {
     
     // free matA
-    for (int i=0; i<matA_m; i++) {
+    for (int i=0; i<size; i++) {
         delete(matA[i]);
     }
     delete(matA);
     
     // free matB
-    for (int i=0; i<matB_n; i++) {
+    for (int i=0; i<size; i++) {
         delete(matB[i]);
     }
     delete(matB);
@@ -141,32 +141,24 @@ void cleanUp() {
 int main (int argc, char **argv) {
 
     // Check bad number of parameters
-    if (argc != 7) {
-        printf("\n\n\tusage:\t./a.out m n matA n p matB\n\n\n");
+    if (argc != 4) {
+        printf("\n\n\tusage:\t./a.out size matA matB\n\n\n");
         return 1;
     }
     
     // Store arguments from command line
-    // Format is ./a.out m n matA n p matB
-    matA_file = argv[3];
-    matB_file = argv[6];
-    matA_m = stoi(argv[1]);
-    matA_n = stoi(argv[2]);
-    matB_n = stoi(argv[4]);
-    matB_p = stoi(argv[5]);
-    
-    // debug print
-    //cout << endl << matA_m << "x" << matA_n << " -- " << matA_file << endl;
-    //cout << matB_n << "x" << matB_p << " -- " << matB_file << endl;
-    
+    // Format is ./a.out size matA matB
+    size = stoi(argv[1]);
+    matA_file = argv[2];
+    matB_file = argv[3];
     
     // Init default values
     init();
     
     // load input matrix
-    matA = loadFromFile(matA_m, matA_n, matA_file);
-    matB = loadFromFile(matB_n, matB_p, matB_file);
-    matC = allocMatrix(matA_m, matB_p);
+    matA = loadFromFile(size, matA_file);
+    matB = loadFromFile(size, matB_file);
+    matC = allocMatrix(size);
     
     // Run main procces
     mainProccesLoop();
@@ -176,7 +168,7 @@ int main (int argc, char **argv) {
         debugMatrix();    
     }*/
     
-    catMatrix(matC, matA_m);
+    printMatrix(matC, size);
     
     // Clean up data
     cleanUp();

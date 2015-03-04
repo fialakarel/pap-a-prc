@@ -8,7 +8,7 @@ printf "\n\n\t=== ===== ===== Simple tests ===== ===== ===\n\tTest size\t\tmatri
 for size in 3 5 10
 do
     printf "\t$size\t\t\t"
-    ./matrix.out $size $size sample/jednotkova-${size}x${size} $size $size sample/test-${size}x${size} >$tmp 
+    ./matrix.out $size sample/jednotkova-${size}x${size} sample/test-${size}x${size} >$tmp 
     f=$?
     if [ $f -eq 0 ]
     then
@@ -34,7 +34,7 @@ printf "\n\n\t=== ===== ===== Regular tests ===== ===== ===\n\tTest size\t\tmatr
 for size in 3 5 10 50 100
 do
     printf "\t$size\t\t\t"
-    ./matrix.out $size $size sample/test-${size}x${size} $size $size sample/test-${size}x${size} >$tmp
+    ./matrix.out $size sample/test-${size}x${size} sample/test-${size}x${size} >$tmp
     f=$?
     if [ $f -eq 0 ]
     then
@@ -66,7 +66,7 @@ then
         for size in 500 1000 2000
         do
             printf "\t$size\t\t\t"
-            time ./matrix.out $size $size sample/stress-${size}x${size} $size $size sample/stress-${size}x${size} &>/dev/null
+            time ./matrix.out $size sample/stress-${size}x${size} $size sample/stress-${size}x${size} &>/dev/null
             f=$?
             if [ $f -eq 0 ]
             then
