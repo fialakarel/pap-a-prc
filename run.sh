@@ -66,7 +66,7 @@ then
         for size in 500 1000 2000
         do
             printf "\t$size\t\t\t"
-            time ./matrix.out $size sample/stress-${size}x${size} $size sample/stress-${size}x${size} &>/dev/null
+            time ./matrix.out $size sample/stress-${size}x${size} sample/stress-${size}x${size} &>/dev/null
             f=$?
             if [ $f -eq 0 ]
             then
