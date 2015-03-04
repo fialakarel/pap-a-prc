@@ -153,15 +153,21 @@ void cleanUp() {
     
     // free matA
     for (int i=0; i<size; i++) {
-        delete(matA[i]);
+        delete[] (matA[i]);
     }
-    delete(matA);
+    delete[](matA);
     
     // free matB
     for (int i=0; i<size; i++) {
-        delete(matB[i]);
+        delete[] (matB[i]);
     }
-    delete(matB);
+    delete[](matB);
+    
+    // free matc
+    for (int i=0; i<size; i++) {
+        delete[] (matC[i]);
+    }
+    delete[] (matC);
 }
 
 
