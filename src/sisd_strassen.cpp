@@ -2,6 +2,7 @@
 typedef struct {
     int ** p;
     int size;
+    int real_size; // hack for "static" allocation
 } matrix;
 
 matrix multM(matrix a, matrix b) {
@@ -105,7 +106,7 @@ matrix s_alg(matrix a, matrix b) {
     matrix t8 = addM(b11, b12);
     matrix t9 = subM(a12, a22);
     matrix t10 = addM(b21, b22);
-    
+
     matrix m1 = s_alg(t1, t2);
     matrix m2 = s_alg(t3, b11);
     matrix m3 = s_alg(a11, t4);
@@ -113,6 +114,15 @@ matrix s_alg(matrix a, matrix b) {
     matrix m5 = s_alg(t6, b22);
     matrix m6 = s_alg(t7, t8);
     matrix m7 = s_alg(t9, t10);
+
+    cleanM(a11);
+    cleanM(a12);
+    cleanM(a21);
+    cleanM(a22);
+    cleanM(b11);
+    cleanM(b12);
+    cleanM(b21);
+    cleanM(b22);
     
     cleanM(t1);
     cleanM(t2);
@@ -124,15 +134,7 @@ matrix s_alg(matrix a, matrix b) {
     cleanM(t8);
     cleanM(t9);
     cleanM(t10);
-    
-    cleanM(a11);
-    cleanM(a12);
-    cleanM(a21);
-    cleanM(a22);
-    cleanM(b11);
-    cleanM(b12);
-    cleanM(b21);
-    cleanM(b22);
+
     
     
     matrix c;
