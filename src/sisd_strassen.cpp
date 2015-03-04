@@ -2,32 +2,44 @@
 typedef struct {
     int ** p;
     int size;
-    int real_size; // hack for "static" allocation
 } matrix;
 
 
 void firstAlloc() {
     
-    //size = size;
+    fakeMatrix = new int**[FAKE_MATRIX_SIZE];
     
-    fakeMatrix = new int**[27];
-    
-    for (int j=0; j<27; j++) {
+    for (int j=0; j<FAKE_MATRIX_SIZE; j++) {
         fakeMatrix[j] = new int*[size];
         for (int i=0; i<size; i++) {
             fakeMatrix[j][i] = new int[size];
+            /*for (int k = 0 ; k < size ; k++) {
+                fakeMatrix[j][i][k] = 0;
+            }*/
         }
     }
 }
 
 int ** fakeAlloc() {
-    return fakeMatrix[(pfm++) % 26];
+    pfm = pfm + 1;
+    if (pfm > (FAKE_MATRIX_SIZE-5) ) {
+        pfm = 1;
+    }
+    return fakeMatrix[pfm];
+}
+
+int ** Alloc(int size) {
+    #ifdef FAKE_ALLOC
+        return fakeAlloc();
+    #else    
+        return allocMatrix(size);
+    #endif
 }
 
 
 matrix multM(matrix a, matrix b) {
     matrix c;
-    c.p = fakeAlloc();
+    c.p = Alloc(a.size);
     c.size = a.size;
     for (int i = 0; i < a.size; i++) {
         for (int j = 0; j < a.size; j++) {
@@ -43,7 +55,7 @@ matrix multM(matrix a, matrix b) {
 
 matrix subM(matrix a, matrix b) {
     matrix c;
-    c.p = fakeAlloc();
+    c.p = Alloc(a.size);
     c.size = a.size;
     for (int i = 0 ; i < a.size ; i++) {
         for (int j = 0 ; j < a.size ; j++) {
@@ -55,7 +67,7 @@ matrix subM(matrix a, matrix b) {
 
 matrix addM(matrix a, matrix b) {
     matrix c;
-    c.p = fakeAlloc();
+    c.p = Alloc(a.size);
     c.size = a.size;
     for (int i = 0 ; i < a.size ; i++) {
         for (int j = 0 ; j < a.size ; j++) {
@@ -67,7 +79,7 @@ matrix addM(matrix a, matrix b) {
 
 matrix getPart(int f1, int f2, matrix x) {
     matrix c;
-    c.p = fakeAlloc();
+    c.p = Alloc(x.size/2);
     c.size = x.size/2;
     int xstart = f1 * c.size ;
     int ystart = f2 * c.size ;
@@ -91,21 +103,30 @@ void setPart(int f1, int f2, matrix *target, matrix source) {
     }
 }
 
+
 void cleanM(matrix x) {
+
+    #ifdef FAKE_ALLOC
+        // nic
+    #else    
     
     for (int i=0; i<x.size; i++) {
         delete[] (x.p[i]);
     }
     delete[](x.p);
+        
+    #endif
 }
 
 
 matrix s_alg(matrix a, matrix b) {
     
-    if ( a.size == 1 ) {
+    if ( a.size <= STRASSEN_THRESHOLD ) {
         return multM(a, b);
     }
-
+    
+    //printMatrix(a.p, a.size);
+    
     matrix a11 = getPart(0, 0, a);
     matrix a12 = getPart(0, 1, a);
     matrix a21 = getPart(1, 0, a);
@@ -135,30 +156,29 @@ matrix s_alg(matrix a, matrix b) {
     matrix m6 = s_alg(t7, t8);
     matrix m7 = s_alg(t9, t10);
 
-//     cleanM(a11);
-//     cleanM(a12);
-//     cleanM(a21);
-//     cleanM(a22);
-//     cleanM(b11);
-//     cleanM(b12);
-//     cleanM(b21);
-//     cleanM(b22);
-//     
-//     cleanM(t1);
-//     cleanM(t2);
-//     cleanM(t3);
-//     cleanM(t4);
-//     cleanM(t5);
-//     cleanM(t6);
-//     cleanM(t7);
-//     cleanM(t8);
-//     cleanM(t9);
-//     cleanM(t10);
+    cleanM(a11);
+    cleanM(a12);
+    cleanM(a21);
+    cleanM(a22);
+    cleanM(b11);
+    cleanM(b12);
+    cleanM(b21);
+    cleanM(b22);
+    
+    cleanM(t1);
+    cleanM(t2);
+    cleanM(t3);
+    cleanM(t4);
+    cleanM(t5);
+    cleanM(t6);
+    cleanM(t7);
+    cleanM(t8);
+    cleanM(t9);
+    cleanM(t10);
 
     
-    
     matrix c;
-    c.p = allocMatrix(a.size);
+    c.p = Alloc(a.size);
     c.size = a.size;
     
     matrix rx1 = addM(m1, m4);
@@ -185,16 +205,17 @@ matrix s_alg(matrix a, matrix b) {
     cleanM(m5);
     cleanM(m6);
     cleanM(m7);
-//     
-//     cleanM(rx1);
-//     cleanM(rx2);
-//     cleanM(rx3);
-//     cleanM(r2);
-//     cleanM(r3);
-//     cleanM(ry1);
-//     cleanM(ry2);
-//     cleanM(ry3);
     
+    cleanM(rx1);
+    cleanM(rx2);
+    cleanM(rx3);
+    cleanM(r2);
+    cleanM(r3);
+    cleanM(ry1);
+    cleanM(ry2);
+    cleanM(ry3);
+    
+ 
     return c;
 
 }
@@ -212,7 +233,9 @@ int ** strassen(int size, int ** A, int ** B) {
     b.p = B;
     b.size = size;
     
-    firstAlloc();
+    #ifdef FAKE_ALLOC
+        firstAlloc();
+    #endif
     
     matrix c = s_alg(a, b);
     

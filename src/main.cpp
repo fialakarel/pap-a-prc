@@ -28,14 +28,7 @@ int shiftSize(int size) {
 }
 
 
-int ** allocMatrix(int old_size) {
-    
-    int size = old_size;
-    
-    // only for Strassen
-    #ifdef alg_sisd_strassen
-    size = shiftSize(old_size);
-    #endif
+int ** allocMatrix(int size) {
     
     int ** matrix = new int*[size];
     
@@ -52,7 +45,15 @@ int ** allocMatrix(int old_size) {
     return matrix;
 }
 
-
+void printMatrix(int ** matrix, int size) {
+    for(int i = 0; i < size; i++) {
+        for(int j = 0; j < size; j++) {
+            cout << matrix[i][j] << " ";
+        }
+        cout << endl;
+    }
+    cout << endl;
+}
 
 #ifdef alg_sisd_classic
     #include "sisd_trivial.cpp"
@@ -70,16 +71,6 @@ void mainProccesLoop() {
     #ifdef alg_sisd_strassen
         matC = strassen(size, matA, matB);
     #endif
-}
-
-void printMatrix(int ** matrix, int size) {
-    for(int i = 0; i < size; i++) {
-        for(int j = 0; j < size; j++) {
-            cout << matC[i][j] << " ";
-        }
-        cout << endl;
-    }
-    cout << endl;
 }
 
 void debugMatrix() {
@@ -116,6 +107,10 @@ int ** loadFromFile(int size, string filePath) {
     if (file.is_open()) {
         // Alloc triangle
         
+        // only for Strassen
+        #ifdef alg_sisd_strassen
+            size = shiftSize(size);
+        #endif
         int ** matrix = allocMatrix(size);
         
         
@@ -204,10 +199,10 @@ int main (int argc, char **argv) {
     mainProccesLoop();
 
     // debugMatrix
-    /*if (matA_m < 11) {
+    /*if (size < 11) {
         debugMatrix();    
-    }
-    */
+    }*/
+    
     
     printMatrix(matC, prev_size);
     

@@ -14,3 +14,8 @@ int prev_size;
 
 int *** fakeMatrix = NULL;
 int pfm = 0;
+int FAKE_MATRIX_SIZE = 100;
+
+int STRASSEN_THRESHOLD = 500;
+
+//#define FAKE_ALLOC 1
