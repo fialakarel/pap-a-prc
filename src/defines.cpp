@@ -10,3 +10,4 @@ string matB_file;
 
 // matrix dimension
 int size;
+int prev_size;

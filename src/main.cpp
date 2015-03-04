@@ -11,6 +11,49 @@ using namespace std;
 #include "defines.cpp"
 
 
+
+int shiftSize(int size) {
+    int shifts = 0;
+    int new_size = size;
+    while (new_size > 1) {
+        //cout << "." << flush;
+        new_size>>=1;
+        shifts++;
+    }
+    while (new_size < size) {
+        //cout << "/" << flush;
+        new_size<<=1;
+    }
+    return new_size;
+}
+
+
+int ** allocMatrix(int old_size) {
+    
+    int size = old_size;
+    
+    // only for Strassen
+    #ifdef alg_sisd_strassen
+    size = shiftSize(old_size);
+    #endif
+    
+    int ** matrix = new int*[size];
+    
+    for (int i=0; i<size; i++) {
+        matrix[i] = new int[size];
+    }
+    
+    for(int i = 0; i < size; i++) {
+        for(int j = 0; j < size; j++) {
+            matrix[i][j] = 0;
+        }
+    }
+    
+    return matrix;
+}
+
+
+
 #ifdef alg_sisd_classic
     #include "sisd_trivial.cpp"
 #endif
@@ -25,7 +68,7 @@ void mainProccesLoop() {
     #endif
 
     #ifdef alg_sisd_strassen
-        strassen(size, matA, matB, matC);
+        matC = strassen(size, matA, matB);
     #endif
 }
 
@@ -62,46 +105,6 @@ void debugMatrix() {
         cout << endl;
     }
     cout << endl;
-}
-
-int shiftSize(int size) {
-    int shifts = 0;
-    int new_size = size;
-    while (new_size > 1) {
-        //cout << "." << flush;
-        new_size>>=1;
-        shifts++;
-    }
-    while (new_size < size) {
-        //cout << "/" << flush;
-        new_size<<=1;
-    }
-    return new_size;
-}
-
-
-int ** allocMatrix(int old_size) {
-    
-    int size = old_size;
-    
-    // only for Strassen
-    #ifdef alg_sisd_strassen
-        size = shiftSize(old_size);
-    #endif
-    
-    int ** matrix = new int*[size];
-    
-    for (int i=0; i<size; i++) {
-        matrix[i] = new int[size];
-    }
-    
-    for(int i = 0; i < size; i++) {
-        for(int j = 0; j < size; j++) {
-            matrix[i][j] = 0;
-        }
-    }
-    
-    return matrix;
 }
 
 int ** loadFromFile(int size, string filePath) {
@@ -184,6 +187,8 @@ int main (int argc, char **argv) {
     matB = loadFromFile(size, matB_file);
     matC = allocMatrix(size);
     
+    prev_size = size;
+    
     // only for Strassen
     #ifdef alg_sisd_strassen
         size = shiftSize(size);
@@ -195,12 +200,14 @@ int main (int argc, char **argv) {
     // debugMatrix
     /*if (matA_m < 11) {
         debugMatrix();    
-    }*/
+    }
+    */
     
-    printMatrix(matC, size);
+    printMatrix(matC, prev_size);
     
     // Clean up data
     cleanUp();
     
     return 0;
 }
+
