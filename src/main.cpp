@@ -57,11 +57,11 @@ void printMatrix(int ** matrix, int size) {
 }
 
 #ifdef alg_simd_classic
-    #include "sisd_trivial.cpp"
+    #include "simd_trivial.cpp"
 #endif
 
 #ifdef alg_simd_strassen
-    #include "sisd_strassen.cpp"
+    #include "simd_strassen.cpp"
 #endif
 
 void mainProccesLoop() {
