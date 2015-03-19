@@ -13,3 +13,5 @@ matrix.synctex.gz
 matrix.toc
 
 logs/*
+
+*.swp
