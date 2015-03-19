@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <sstream>
 #include <fstream>
+#include <omp.h>
 
 #define DEBUG 1
 
@@ -55,20 +56,20 @@ void printMatrix(int ** matrix, int size) {
     cout << endl;
 }
 
-#ifdef alg_sisd_classic
+#ifdef alg_simd_classic
     #include "sisd_trivial.cpp"
 #endif
 
-#ifdef alg_sisd_strassen
+#ifdef alg_simd_strassen
     #include "sisd_strassen.cpp"
 #endif
 
 void mainProccesLoop() {
-    #ifdef alg_sisd_classic
+    #ifdef alg_simd_classic
         trivial(size, matA, matB, matC);
     #endif
 
-    #ifdef alg_sisd_strassen
+    #ifdef alg_simd_strassen
         matC = strassen(size, matA, matB);
     #endif
 }
@@ -108,7 +109,7 @@ int ** loadFromFile(int size, string filePath) {
         // Alloc triangle
         
         // only for Strassen
-        #ifdef alg_sisd_strassen
+        #ifdef alg_simd_strassen
             size = shiftSize(size);
         #endif
         int ** matrix = allocMatrix(size);
@@ -191,7 +192,7 @@ int main (int argc, char **argv) {
     prev_size = size;
     
     // only for Strassen
-    #ifdef alg_sisd_strassen
+    #ifdef alg_simd_strassen
         size = shiftSize(size);
     #endif
     
