@@ -2,7 +2,7 @@
 void trivial(int size, int ** A, int ** B, int ** C) {
    
     int i;
-    omp_set_num_threads(4);
+	omp_set_num_threads(THREADS);
 
     #pragma omp parallel for shared(A, B, C) private(i) schedule(dynamic,10)
     for (i = 0; i < size; i++) {
