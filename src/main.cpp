@@ -124,7 +124,7 @@ int ** loadFromFile(int size, string filePath) {
             ss << line;
             
             // Load numbers to triangle
-            for (int i=0; i<size; i++) {
+            for (int i=0; i<prev_size; i++) {
                 // Get number from line
                 ss >> number;
                 // Save number to triangle
@@ -184,12 +184,12 @@ int main (int argc, char **argv) {
     // Init default values
     init();
     
+    prev_size = size;
+
     // load input matrix
     matA = loadFromFile(size, matA_file);
     matB = loadFromFile(size, matB_file);
     matC = allocMatrix(size);
-    
-    prev_size = size;
     
     // only for Strassen
     #ifdef alg_simd_strassen
