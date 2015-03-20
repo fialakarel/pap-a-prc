@@ -191,11 +191,49 @@ matrix s_alg(matrix a, matrix b) {
 
 matrix mpWrap(matrix a, matrix b) {
 
-	matrix c;
-
 	// multiprocess here
-	c = s_alg(a, b);
+//	c = s_alg(a, b);
 
+	matrix a1 = getPart(0, 0, a);
+    matrix a2 = getPart(0, 1, a);
+    matrix a3 = getPart(1, 0, a);
+    matrix a4 = getPart(1, 1, a);
+
+    matrix b1 = getPart(0, 0, b);
+    matrix b2 = getPart(0, 1, b);
+    matrix b3 = getPart(1, 0, b);
+    matrix b4 = getPart(1, 1, b);
+
+	// x
+    matrix a1_b1 = s_alg(a1, b1);
+    matrix a2_b3 = s_alg(a2, b3);
+
+	// y
+	matrix a1_b2 = s_alg(a1, b2);
+    matrix a2_b4 = s_alg(a2, b4);
+
+	// z
+	matrix a3_b1 = s_alg(a3, b1);
+    matrix a4_b3 = s_alg(a4, b3);
+
+	// w
+	matrix a3_b2 = s_alg(a3, b2);
+    matrix a4_b4 = s_alg(a4, b4);
+
+	matrix x = addM(a1_b1, a2_b3);
+	matrix y = addM(a1_b2, a2_b4);
+   	matrix z = addM(a3_b1, a4_b3);
+ 	matrix w = addM(a3_b2, a4_b4);
+
+	matrix c;
+	c.p = Alloc(a.size);
+    c.size = a.size;
+    
+    setPart(0, 0, &c, x);
+    setPart(0, 1, &c, y);
+    setPart(1, 0, &c, z);
+    setPart(1, 1, &c, w);
+    
 
 	return c;
 }
