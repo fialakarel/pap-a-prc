@@ -189,6 +189,17 @@ matrix s_alg(matrix a, matrix b) {
 }
 
 
+matrix mpWrap(matrix a, matrix b) {
+
+	matrix c;
+
+	// multiprocess here
+	c = s_alg(a, b);
+
+
+	return c;
+}
+
 
 // strassen algorithm
 int ** strassen(int size, int ** A, int ** B) {
@@ -201,7 +212,7 @@ int ** strassen(int size, int ** A, int ** B) {
     b.p = B;
     b.size = size;
     
-    matrix c = s_alg(a, b);
+    matrix c = mpWrap(a, b);
     
     
     return c.p;
