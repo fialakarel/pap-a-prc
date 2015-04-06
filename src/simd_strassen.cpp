@@ -192,47 +192,159 @@ matrix s_alg(matrix a, matrix b) {
 matrix mpWrap(matrix a, matrix b) {
 
 	// multiprocess here
-//	c = s_alg(a, b);
+	int depth = 2;
+	int parts = 1;
 
-	matrix a1 = getPart(0, 0, a);
-    matrix a2 = getPart(0, 1, a);
-    matrix a3 = getPart(1, 0, a);
-    matrix a4 = getPart(1, 1, a);
+	for (int i = 0 ; i < depth; i++) {
+		parts = parts * 4;
+	}
 
-    matrix b1 = getPart(0, 0, b);
-    matrix b2 = getPart(0, 1, b);
-    matrix b3 = getPart(1, 0, b);
-    matrix b4 = getPart(1, 1, b);
+	while (parts > a.size) {
+		depth--;
+		parts = 1;
 
+		for (int i = 0 ; i < depth; i++) {
+			parts = parts * 4;
+		}
+	
+	}
+	
+	matrix ** e = new matrix*[depth+1];
+	matrix ** f = new matrix*[depth+1];
+
+	for (int i = 0; i < depth+1; i++) {
+		e[i] = new matrix[parts];
+		f[i] = new matrix[parts];
+	}
+
+	
+//	e = new matrix*;
+//	e[0] = new matrix;
+//	f = new matrix*;
+//	f[0] = new matrix;
+
+	e[0][0] = a;
+//	e[0][1] = getPart(0, 1, a);
+//	e[0][2] = getPart(1, 0, a);
+//	e[0][3] = getPart(1, 1, a);
+	
+	f[0][0] = b;
+//	f[0][1] = getPart(0, 1, b);
+//	f[0][2] = getPart(1, 0, b);
+//	f[0][3] = getPart(1, 1, b);
+	
+
+	int pos = 1;
+	int pointer = 0;
+
+	for (int i = 1; i < depth+1; i++) {
+
+		pointer = 0;
+
+		for (int j = 0; j < pos; j++) {
+
+			e[i][pointer] = getPart(0, 0, e[i-1][j]);
+			e[i][pointer+1] = getPart(0, 1, e[i-1][j]);
+			e[i][pointer+2] = getPart(1, 0, e[i-1][j]);
+			e[i][pointer+3] = getPart(1, 1, e[i-1][j]);
+	
+			f[i][pointer] = getPart(0, 0, f[i-1][j]);
+			f[i][pointer+1] = getPart(0, 1, f[i-1][j]);
+			f[i][pointer+2] = getPart(1, 0, f[i-1][j]);
+			f[i][pointer+3] = getPart(1, 1, f[i-1][j]);
+
+			pointer = pointer + 4;
+		}
+
+		pos = pos * 4;
+    }
+    omp_set_num_threads(THREADS);
+
+
+    matrix * r = new matrix[parts*2];
+    int ei = 0;
+    int fi = 0;
+    int i;
+    int shift = 0;
+	
+//	#pragma omp parallel for shared(r, i) schedule(dynamic,1)
+	for (i = 0; i < parts*2; i++) {
+		
+		if (i != 0 && i % 8 == 0) {
+			shift = shift + 4;
+		}
+
+		if (i % 8 == 0) {
+			ei = 0;
+			fi = 0;
+		} else if (i % 8 == 1) {
+			ei = 1;
+			fi = 2;
+		} else if (i % 8 == 2) {
+			ei = 0;
+			fi = 1;
+		} else if (i % 8 == 3) {
+			ei = 1;
+			fi = 3;
+		} else if (i % 8 == 4) {
+			ei = 2;
+			fi = 0;
+		} else if (i % 8 == 5) {
+			ei = 3;
+			fi = 2;
+		} else if (i % 8 == 6) {
+			ei = 2;
+			fi = 1;
+		} else {
+			ei = 3;
+			fi = 3;
+		}
+
+		r[i] = s_alg(e[depth][ei + shift], f[depth][fi + shift]);
+
+	}
+
+	for (int j = 0; j < parts*2; j++) {
+		printMatrix(r[j].p, r[j].size);
+	}
+	cout << "*******" << endl;
+ 
+/*
 	// x
-    matrix a1_b1 = s_alg(a1, b1);
-    matrix a2_b3 = s_alg(a2, b3);
+    matrix a1_b1 = s_alg(e[0], f[0]); r0
+    matrix a2_b3 = s_alg(e[1], f[2]); r1
 
 	// y
-	matrix a1_b2 = s_alg(a1, b2);
-    matrix a2_b4 = s_alg(a2, b4);
+	matrix a1_b2 = s_alg(e[0], f[1]); r2
+    matrix a2_b4 = s_alg(e[1], f[3]); r3
 
 	// z
-	matrix a3_b1 = s_alg(a3, b1);
-    matrix a4_b3 = s_alg(a4, b3);
+	matrix a3_b1 = s_alg(e[2], f[0]); r4
+    matrix a4_b3 = s_alg(e[3], f[2]); r5
 
 	// w
-	matrix a3_b2 = s_alg(a3, b2);
-    matrix a4_b4 = s_alg(a4, b4);
+	matrix a3_b2 = s_alg(e[2], f[1]); r6
+    matrix a4_b4 = s_alg(e[3], f[3]); r7
+*/
 
-	matrix x = addM(a1_b1, a2_b3);
-	matrix y = addM(a1_b2, a2_b4);
-   	matrix z = addM(a3_b1, a4_b3);
- 	matrix w = addM(a3_b2, a4_b4);
+	matrix * cx = new matrix[parts];
+
+	for (int j = 0; j < parts; j++) {
+		cx[j] = addM(r[j*2], r[(j*2)+1]);
+		printMatrix(cx[j].p, cx[j].size);
+	}
+//	matrix y = addM(r[2], r[3]);
+// 	matrix z = addM(r[4], r[5]);
+// 	matrix w = addM(r[6], r[7]);
 
 	matrix c;
 	c.p = Alloc(a.size);
     c.size = a.size;
     
-    setPart(0, 0, &c, x);
-    setPart(0, 1, &c, y);
-    setPart(1, 0, &c, z);
-    setPart(1, 1, &c, w);
+    setPart(0, 0, &c, cx[0]);
+    setPart(0, 1, &c, cx[1]);
+    setPart(1, 0, &c, cx[2]);
+    setPart(1, 1, &c, cx[3]);
     
 
 	return c;

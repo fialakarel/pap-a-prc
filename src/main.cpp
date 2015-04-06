@@ -4,6 +4,7 @@
 #include <sstream>
 #include <fstream>
 #include <omp.h>
+#include <unistd.h>
 
 #define DEBUG 1
 
@@ -196,6 +197,7 @@ int main (int argc, char **argv) {
         size = shiftSize(size);
     #endif
     
+	double start = omp_get_wtime();
     // Run main procces
     mainProccesLoop();
 
@@ -204,8 +206,11 @@ int main (int argc, char **argv) {
         debugMatrix();    
     }*/
     
-    
+	#ifdef DEBUG_PRINT
     printMatrix(matC, prev_size);
+	#endif
+
+    printf("THREADS: %d \t time: \t %f \n", THREADS, omp_get_wtime()-start); 
     
     // Clean up data
     cleanUp();

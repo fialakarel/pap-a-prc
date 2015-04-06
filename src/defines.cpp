@@ -19,6 +19,9 @@ int FAKE_MATRIX_SIZE = 100;
 int STRASSEN_THRESHOLD = 500;
 
 //#define FAKE_ALLOC 1
+//
+
+//#define DEBUG_PRINT 1
 
 #ifndef THREADS
 	#define THREADS 2
