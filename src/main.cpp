@@ -50,7 +50,7 @@ int ** allocMatrix(int size) {
 void printMatrix(int ** matrix, int size) {
     for(int i = 0; i < size; i++) {
         for(int j = 0; j < size; j++) {
-            cout << matrix[i][j] << " ";
+            cout << matrix[i][j] << "\t";
         }
         cout << endl;
     }
@@ -209,6 +209,12 @@ int main (int argc, char **argv) {
 	#ifdef DEBUG_PRINT
     printMatrix(matC, prev_size);
 	#endif
+
+	#ifdef RESULT
+    printMatrix(matC, prev_size);
+	#endif
+
+
 
     printf("THREADS: %d \t time: \t %f \n", THREADS, omp_get_wtime()-start); 
     
