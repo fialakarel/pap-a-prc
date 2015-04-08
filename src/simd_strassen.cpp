@@ -344,12 +344,14 @@ matrix mpWrap(matrix a, matrix b) {
 
 
 	// prvni redukce 64 > 32
-	for (int i = 0; i < parts*4 ; i = i + 2) {
+	#pragma omp parallel for shared(r, i) schedule(dynamic,1)
+	for (i = 0; i < parts*4 ; i = i + 2) {
 		r[i] = addM(r[i], r[i+1]);
 	}
 
 	// druha redukce 32 -> 16
-	for (int i = 0; i < parts*4; i = i + 4) {
+	#pragma omp parallel for shared(r, i) schedule(dynamic,1)
+	for (i = 0; i < parts*4; i = i + 4) {
 		r[i] = addM(r[i], r[i+2]);
 	}
 
@@ -362,7 +364,8 @@ matrix mpWrap(matrix a, matrix b) {
 	matrix t[4];
 
 	// skladani 16 -> 4
-	for (int i = 0; i < 4; i++) {
+	#pragma omp parallel for shared(t, r, i) schedule(dynamic,1)
+	for (i = 0; i < 4; i++) {
 		t[i].p = Alloc(a.size/2);
 		t[i].size = a.size/2;
 

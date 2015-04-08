@@ -42,13 +42,6 @@ Násobení matic \\
 %- Tabulkově a případně graficky zpracované naměřené hodnoty časové složitosti měřených instancí běhu (optimalizované implementace) programu s popisem instancí dat
 %- Analýza a hodnocení vlastností dané implementace programu.
 %
-%Kapitola 3 (pro ISPC)
-%- Popis případných úprav algoritmu a jeho implementace, včetně volby datových struktur
-%- Zda byla využita vektorizace (popř. proč jí nemožno využít)
-%- Popis optimalizací pro dosažení lineárního zrychlení
-%- Tabulkově a případně graficky zpracované naměřené hodnoty časové složitosti měřených instancí běhu (optimalizované implementace) programu s popisem instancí dat
-%- Analýza a hodnocení vlastností dané implementace programu.
-%
 %Kapitola 4 (pro CUDA)
 %- Popis případných úprav algoritmu a jeho implementace, včetně volby datových struktur
 %- Popis optimalizací pro dosažení efektivní implementace
@@ -65,23 +58,239 @@ Násobení matic \\
 
 \section{Definice problému a popis sekvenčního algoritmu}
 \subsection{Definice problému}
+
+Násobení matic pomocí klasického algoritmu a rekurzivního Strassenova algoritmu.
+
 \subsection{Popis sekvenčního algoritmu a jeho implementace}
+
+\subsubsection{Klasický multiplikační algoritmus}
+Násobíme matici $B$ maticí $A$ tak, že výsledný prvek matice $C$ je součtem součinů čísel v řádku matice $A$ s příslušným číslem ve sloupci matici $B$.
+
+\bigskip
+Výpočetní náročnost klasického algoritmu je $O(n^3)$.
+
+\bigskip
+Klasický multiplikační algoritmus je implementován třemi vnořenými cykly, kde první dva určují řádek a sloupec výsledné matice a třetí tvoří součet součinů prvků násobených matic.
+
+\bigskip
+Algoritmus je časově i paměťové stabilní.
+
+\subsubsection{Strassenův rekurzivní algoritmus}
+
+Strassenův rekurzivní algoritmus je asymptoticky rychlejší než klasický multiplikační algoritmus. Využívá pouze 7 násobení místo 8 jako je tomu u klasického multiplikačního algoritmu.
+
+\bigskip
+Strassenův rekurzivní algoritmus pracuje se složitostí $O(n^{\log_2{7}}) \approx O(n^{2.807})$. 
+
+\bigskip
+V mé implementaci se pro matice řádu 500 a nižší použije klasický multiplikační algoritmus, který je efektivnější.
 
 
 \section{OpenMP}
-\subsection{Popis případných úprav algoritmu a jeho implementace, včetně volby datových struktur}
-\subsection{Zda byla využita vektorizace (popř. proč jí nemožno využít)}
-\subsection{Popis optimalizací pro dosažení lineárního zrychlení}
-\subsection{Tabulkově a případně graficky zpracované naměřené hodnoty časové složitosti měřených instancí běhu (optimalizované implementace) programu s popisem instancí dat}
-\subsection{Analýza a hodnocení vlastností dané implementace programu}
+\subsection{Popis implementace}
+
+\subsubsection{Klasický multiplikační algoritmus}
+
+V podstatě bez úprav.
+
+\bigskip
+Paralelizace spočívá ve vložení následujícího řádku před první cyklus.
+
+\begin{verbatim}
+#pragma omp parallel for shared(C) private(i) schedule(dynamic,10)
+\end{verbatim}
+
+\bigskip
+Dělení práce po 10ti \uv{kusech} snižuje režii v případě velkých vstupních matic. Jeden řádek matice je zpracován velmi rychle.
 
 
-\section{ISPC}
-\subsection{Popis případných úprav algoritmu a jeho implementace, včetně volby datových struktur}
-\subsection{Zda byla využita vektorizace (popř. proč jí nemožno využít)}
+\subsubsection{Strassenův rekurzivní algoritmus}
+
+Úprav v celém programu je opět minimálně.
+\bigskip
+
+Místo přímého volání Strassenova rekurzivního algoritmu je zavolán \uv{wrapper}, který se postará o rozdělení dvou vstupních matic na $2*16$ podmatic. Jednotlivá vlákna poté volají Strassenův rekurzivní algoritmus na násobení dvou menších matic. Těchto volání je 64, protože každý prvek výsledné matice je složen ze 4 součinů podmatic.
+\bigskip
+
+Takto implementovaný algoritmus tedy dokáže využít maximálně 64 procesorových jader.
+
+\bigskip
+64 podmatic je poté paralelně redukováno na 32 podmatic a poté opět paralelně redukováno na 16 výsledných podmatic. Tyto matice jsou již částmi chtěného výsledku.
+
+
+\subsection{Použití vektorizace}
+
+\subsubsection{Klasický multiplikativní algoritmus}
+
+\begin{verbatim}
+src/simd_trivial.cpp:7: note: vectorized 0 loops in function.
+src/main.cpp:17: note: vectorized 0 loops in function.
+src/main.cpp:33: note: vectorized 0 loops in function.
+src/main.cpp:50: note: vectorized 0 loops in function.
+src/main.cpp:78: note: vectorized 0 loops in function.
+src/main.cpp:103: note: vectorized 0 loops in function.
+src/main.cpp:149: note: vectorized 0 loops in function.
+\end{verbatim}
+
+
+\subsubsection{Strassenův rekurzivní algoritmus}
+
+\begin{verbatim}
+src/simd_strassen.cpp:353: note: vectorized 1 loops in function.
+src/simd_strassen.cpp:347: note: vectorized 1 loops in function.
+src/simd_strassen.cpp:367: note: vectorized 4 loops in function.
+src/main.cpp:17: note: vectorized 0 loops in function.
+src/main.cpp:33: note: vectorized 0 loops in function.
+src/main.cpp:50: note: vectorized 0 loops in function.
+src/simd_strassen.cpp:8: note: vectorized 0 loops in function.
+src/simd_strassen.cpp:13: note: vectorized 0 loops in function.
+src/simd_strassen.cpp:29: note: vectorized 1 loops in function.
+src/simd_strassen.cpp:41: note: vectorized 1 loops in function.
+src/simd_strassen.cpp:53: note: vectorized 1 loops in function.
+src/simd_strassen.cpp:68: note: vectorized 1 loops in function.
+src/simd_strassen.cpp:80: note: vectorized 0 loops in function.
+src/simd_strassen.cpp:90: note: vectorized 30 loops in function.
+src/simd_strassen.cpp:330: note: vectorized 0 loops in function.
+src/simd_strassen.cpp:191: note: vectorized 12 loops in function.
+src/main.cpp:78: note: vectorized 0 loops in function.
+src/main.cpp:103: note: vectorized 0 loops in function.
+src/main.cpp:149: note: vectorized 0 loops in function.
+src/main.cpp:171: note: vectorized 0 loops in function.
+
+\end{verbatim}
+
+
+
 \subsection{Popis optimalizací pro dosažení lineárního zrychlení}
-\subsection{Tabulkově a případně graficky zpracované naměřené hodnoty časové složitosti měřených instancí běhu (optimalizované implementace) programu s popisem instancí dat}
+
+Vše bylo kompilováno s parametrem $-O3$.
+
+\subsubsection{Klasický multiplikační algoritmus}
+
+Žádné speciální optimalizace.
+
+
+\subsubsection{Strassenův rekurzivní algoritmus}
+
+Snaha o zmenšení režie při práci s podmaticemi, např. pomocí paralelizace redukce.
+
+
+
+
+\pagebreak
+\subsection{Naměřené výsledky}
+
+
+\subsubsection{Klasický multiplikační algoritmus}
+
+
+\begin{center}
+\begin{tabular}{ | c || c | c | c | c | }
+\hline
+\#CPU    &   1000		&	2000	&	3000	&	4000	\\
+\hline
+\hline
+1    &   11.365326		&	103.732902	&	264.885942 	& 450.300757 	\\ \hline
+2    &   5.683157		&	25.049751	&	197.348525 	& 314.536432 	\\ \hline
+4    &   2.847626		&	25.096038	&	99.390237 	& 180.675981 	 \\	 \hline
+8    &   1.486099		&	12.946192	&	49.909194 	& 108.842585	\\	 \hline
+12   &   1.034171		&	8.721059 	&	32.952173	& 90.281103 	\\	 \hline
+24   &   1.031660		&	9.081376	&	34.469956	& 89.329224  	\\ \hline
+\end{tabular}
+\end{center}
+
+\pagebreak
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{graph/classic.png}
+\caption{Klasický multiplikační algoritmus}
+\label{data4}
+\end{figure}
+
+\pagebreak
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{graph/classic-3000.png}
+\caption{Klasický multiplikační algoritmus pro matici 3000x3000}
+\label{data4}
+\end{figure}
+
+
+
+\pagebreak
+\subsubsection{Strassenův rekurzivní algoritmus}
+
+
+\begin{center}
+\begin{tabular}{ | c || c | c | c | c | }
+\hline
+\#CPU    &   1000		&	2000	&	3000	&	4000	\\
+\hline
+\hline
+1    &   1.387058		&	9.859318 	&	70.110456  	& 70.087705  	\\ \hline
+2    &   0.732522 		&	5.096552 	&	35.600932 	& 35.565978 	\\ \hline
+4    &   0.391072 		&	2.666515 	&	18.332472 	& 18.290037 	 \\	 \hline
+8    &   0.297135 		&	1.605526 	&	9.874875 	& 9.713100	\\	 \hline
+12   &   0.343952 		&	1.643614  	&	7.973451	& 8.023352  	\\	 \hline
+24   &   0.253875 		&	1.489265	&	9.384766	& 9.362794  	\\ \hline
+\end{tabular}
+\end{center}
+
+\pagebreak
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{graph/strassen.png}
+\caption{Strassenův rekurzivní algoritmus}
+\label{data4}
+\end{figure}
+
+\pagebreak
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{graph/strassen-4000.png}
+\caption{Strassenův rekurzivní algoritmus pro matici 4000x4000}
+\label{data4}
+\end{figure}
+
+
+
+
+\pagebreak
+\subsubsection{Porovnání algoritmů}
+
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{graph/classic-vs-strassen.png}
+\caption{Porovnání obou algoritmů}
+\label{data4}
+\end{figure}
+
+\pagebreak
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{graph/classic-vs-strassen-2.png}
+\caption{Porovnání obou algoritmů 2}
+\label{data4}
+\end{figure}
+
+
+\pagebreak
 \subsection{Analýza a hodnocení vlastností dané implementace programu}
+
+Byla naměřena relativně velká odchylka měření a podivná nekonzistence v jednotlivých hodnotách. 
+
+\subsubsection{Klasický multiplikační algoritmus}
+
+Je dosaženo téměř lineárního zrychlení, ale jen do 12ti výpočetních jader.
+\bigskip
+
+Implementovaný algoritmus je časově i paměťové stabilní a předvídatelný.
+
+
+\subsubsection{Strassenův rekurzivní algoritmus}
+
+Je dosaženo téměř lineárního zrychlení, ale opět jen do 12ti výpočetních jader. Výsledky jsou k mému překvapení lepší než u klasického multiplikačního algoritmu.
+\bigskip
+
+Implementovaný algoritmus je paměťové velmi náročný a pro velmi, velmi velké vstupy by byl nepoužitelný. Mnoho času zabere režie s pamětí a mnoho volání.
+\bigskip
+
+Nalezené řešení implementovaného algoritmu obsahuje chybu, která způsobuje drobné odchylky od reality. Chyba je stálá a není závislá na velikosti vstupu, času či míře paralelizace.
+
 
 \section{CUDA}
 \subsection{Popis případných úprav algoritmu a jeho implementace, včetně volby datových struktur}
@@ -91,7 +300,6 @@ Násobení matic \\
 
 \section{Závěr}
 \subsection{Porovnání výkonnosti všech tří verzí}
-\subsection{Literatura}
 
 
 
