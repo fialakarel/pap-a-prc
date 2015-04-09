@@ -7,7 +7,7 @@ unset label                            # remove any previous labels
 set xtic auto                          # set xtics automatically
 set ytic auto                          # set ytics automatically
 set title "závislost času na počtu procesů -- porovnání algoritmů"
-set xlabel "počet výpočetních jednotek"
+set xlabel "počet vláken"
 set ylabel "čas (sec)"
 
 plot "strassen-1000" using 1:2 title 'Strassen 1000x1000' with line,\

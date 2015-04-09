@@ -14,7 +14,7 @@ Násobení matic \\
 \vspace{10px}}
 \author{Karel Fiala \\
 \vspace{10px} \\
-\small České vysoké učení technické v Praze\\
+\small České vysoké učení technické v~Praze\\
 \small Fakulta informačních technologií\\
 \small Thákurova 9, 160 00 Praha 6\\
 \small Česká republika \\
@@ -64,7 +64,7 @@ Násobení matic pomocí klasického algoritmu a rekurzivního Strassenova algor
 \subsection{Popis sekvenčního algoritmu a jeho implementace}
 
 \subsubsection{Klasický multiplikační algoritmus}
-Násobíme matici $B$ maticí $A$ tak, že výsledný prvek matice $C$ je součtem součinů čísel v řádku matice $A$ s příslušným číslem ve sloupci matici $B$.
+Násobíme matici $B$ maticí $A$ tak, že výsledný prvek matice $C$ je součtem součinů čísel v~řádku matice $A$ s~příslušným číslem ve sloupci matici $B$.
 
 \bigskip
 Výpočetní náročnost klasického algoritmu je $O(n^3)$.
@@ -77,13 +77,13 @@ Algoritmus je časově i paměťové stabilní.
 
 \subsubsection{Strassenův rekurzivní algoritmus}
 
-Strassenův rekurzivní algoritmus je asymptoticky rychlejší než klasický multiplikační algoritmus. Využívá pouze 7 násobení místo 8 jako je tomu u klasického multiplikačního algoritmu.
+Strassenův rekurzivní algoritmus je asymptoticky rychlejší než klasický multiplikační algoritmus. Využívá pouze 7 násobení místo 8 jako je tomu u~klasického multiplikačního algoritmu.
 
 \bigskip
 Strassenův rekurzivní algoritmus pracuje se složitostí $O(n^{\log_2{7}}) \approx O(n^{2.807})$. 
 
 \bigskip
-V mé implementaci se pro matice řádu 500 a nižší použije klasický multiplikační algoritmus, který je efektivnější.
+V~mé implementaci se pro matice řádu 500 a nižší použije klasický multiplikační algoritmus, který je efektivnější.
 
 
 \section{OpenMP}
@@ -91,7 +91,7 @@ V mé implementaci se pro matice řádu 500 a nižší použije klasický multip
 
 \subsubsection{Klasický multiplikační algoritmus}
 
-V podstatě bez úprav.
+V~podstatě bez úprav.
 
 \bigskip
 Paralelizace spočívá ve vložení následujícího řádku před první cyklus.
@@ -101,15 +101,15 @@ Paralelizace spočívá ve vložení následujícího řádku před první cyklu
 \end{verbatim}
 
 \bigskip
-Dělení práce po 10ti \uv{kusech} snižuje režii v případě velkých vstupních matic. Jeden řádek matice je zpracován velmi rychle.
+Dělení práce po 10ti \uv{kusech} snižuje režii v~případě velkých vstupních matic. Jeden řádek matice je zpracován velmi rychle.
 
 
 \subsubsection{Strassenův rekurzivní algoritmus}
 
-Úprav v celém programu je opět minimálně.
+Úprav v~celém programu je opět minimálně.
 \bigskip
 
-Místo přímého volání Strassenova rekurzivního algoritmu je zavolán \uv{wrapper}, který se postará o rozdělení dvou vstupních matic na $2*16$ podmatic. Jednotlivá vlákna poté volají Strassenův rekurzivní algoritmus na násobení dvou menších matic. Těchto volání je 64, protože každý prvek výsledné matice je složen ze 4 součinů podmatic.
+Místo přímého volání Strassenova rekurzivního algoritmu je zavolán \uv{wrapper}, který se postará o~rozdělení dvou vstupních matic na $2*16$ podmatic. Jednotlivá vlákna poté volají Strassenův rekurzivní algoritmus na násobení dvou menších matic. Těchto volání je 64, protože každý prvek výsledné matice je složen ze 4 součinů podmatic.
 \bigskip
 
 Takto implementovaný algoritmus tedy dokáže využít maximálně 64 procesorových jader.
@@ -163,7 +163,7 @@ src/main.cpp:171: note: vectorized 0 loops in function.
 
 \subsection{Popis optimalizací pro dosažení lineárního zrychlení}
 
-Vše bylo kompilováno s parametrem $-O3$.
+Vše bylo kompilováno s~parametrem $-O3$.
 
 \subsubsection{Klasický multiplikační algoritmus}
 
@@ -172,7 +172,7 @@ Vše bylo kompilováno s parametrem $-O3$.
 
 \subsubsection{Strassenův rekurzivní algoritmus}
 
-Snaha o zmenšení režie při práci s podmaticemi, např. pomocí paralelizace redukce.
+Snaha o~zmenšení režie při práci s~podmaticemi, např. pomocí paralelizace redukce.
 
 
 
@@ -213,6 +213,13 @@ Snaha o zmenšení režie při práci s podmaticemi, např. pomocí paralelizace
 \label{data4}
 \end{figure}
 
+\pagebreak
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{graph/classic-acc.png}
+\caption{Graf zrychlení klasického multiplikačního algoritmu pro matici 4000x4000}
+\label{data4}
+\end{figure}
+
 
 
 \pagebreak
@@ -249,6 +256,13 @@ Snaha o zmenšení režie při práci s podmaticemi, např. pomocí paralelizace
 \end{figure}
 
 
+\pagebreak
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{graph/strassen-acc.png}
+\caption{Graf zrychlení -- Strassenův rekurzivní algoritmus pro matici 4000x4000}
+\label{data4}
+\end{figure}
+
 
 
 \pagebreak
@@ -268,14 +282,18 @@ Snaha o zmenšení režie při práci s podmaticemi, např. pomocí paralelizace
 \end{figure}
 
 
+
 \pagebreak
 \subsection{Analýza a hodnocení vlastností dané implementace programu}
 
-Byla naměřena relativně velká odchylka měření a podivná nekonzistence v jednotlivých hodnotách. 
+Byla naměřena relativně velká odchylka měření a podivná nekonzistence v~jednotlivých hodnotách. 
+\bigskip
+
+Zrychlení nad 12 jader není žádné. Předpokládám, že testovací server má 12 fyzických jader (a HyperThreading).
 
 \subsubsection{Klasický multiplikační algoritmus}
 
-Je dosaženo téměř lineárního zrychlení, ale jen do 12ti výpočetních jader.
+Není dosaženo lineárního zrychlení.
 \bigskip
 
 Implementovaný algoritmus je časově i paměťové stabilní a předvídatelný.
@@ -283,10 +301,10 @@ Implementovaný algoritmus je časově i paměťové stabilní a předvídateln�
 
 \subsubsection{Strassenův rekurzivní algoritmus}
 
-Je dosaženo téměř lineárního zrychlení, ale opět jen do 12ti výpočetních jader. Výsledky jsou k mému překvapení lepší než u klasického multiplikačního algoritmu.
+Je dosaženo téměř lineárního zrychlení, ale jen do 12ti výpočetních jader. Výsledky jsou k~mému překvapení lepší než u~klasického multiplikačního algoritmu.
 \bigskip
 
-Implementovaný algoritmus je paměťové velmi náročný a pro velmi, velmi velké vstupy by byl nepoužitelný. Mnoho času zabere režie s pamětí a mnoho volání.
+Implementovaný algoritmus je paměťové velmi náročný a pro velmi, velmi velké vstupy by byl nepoužitelný. Mnoho času zabere režie s~pamětí a mnoho volání.
 \bigskip
 
 Nalezené řešení implementovaného algoritmu obsahuje chybu, která způsobuje drobné odchylky od reality. Chyba je stálá a není závislá na velikosti vstupu, času či míře paralelizace.
@@ -295,7 +313,7 @@ Nalezené řešení implementovaného algoritmu obsahuje chybu, která způsobuj
 \section{CUDA}
 \subsection{Popis případných úprav algoritmu a jeho implementace, včetně volby datových struktur}
 \subsection{Popis optimalizací pro dosažení efektivní implementace}
-\subsection{Tabulkově a případně graficky zpracované naměřené hodnoty časové složitosti měřených instancí běhu (optimalizované implementace) programu s popisem instancí dat}
+\subsection{Tabulkově a případně graficky zpracované naměřené hodnoty časové složitosti měřených instancí běhu (optimalizované implementace) programu s~popisem instancí dat}
 \subsection{Analýza a hodnocení vlastností dané implementace programu}
 
 \section{Závěr}
