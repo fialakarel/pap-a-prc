@@ -281,6 +281,21 @@ Snaha o~zmenšení režie při práci s~podmaticemi, např. pomocí paralelizace
 \label{data4}
 \end{figure}
 
+\pagebreak
+\subsubsection{Porovnání plánování}
+
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{graph/classic-dynamic-vs-static.png}
+\caption{Porovnání plánování dynamic vs static}
+\label{data4}
+\end{figure}
+
+\pagebreak
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{graph/strassen-dynamic-vs-static.png}
+\caption{Porovnání plánování dynamic vs static}
+\label{data4}
+\end{figure}
 
 
 \pagebreak
@@ -308,6 +323,14 @@ Implementovaný algoritmus je paměťové velmi náročný a pro velmi, velmi ve
 \bigskip
 
 Nalezené řešení implementovaného algoritmu obsahuje chybu, která způsobuje drobné odchylky od reality. Chyba je stálá a není závislá na velikosti vstupu, času či míře paralelizace.
+
+\subsubsection{Dynamické vs statické plánování}
+
+
+Pro klasický multiplikační algoritmus je průběh zrychlení pro dynamické i statické plánování zcela odlišný. Statické plánování zde dosahuje menšího zrychlení, přestože zrychlení roste pro větší množství vláken než u dynamického plánování. \\
+
+
+Pro Strassenův rekurzivní algoritmus je průběh zrychlení pro dynamické i statické plánování stejný, avšak dynamické plánování dosahuje většího zrychlení.
 
 
 \section{CUDA}
