@@ -23,6 +23,6 @@ int STRASSEN_THRESHOLD = 500;
 
 //#define DEBUG_PRINT 1
 
-#ifndef THREADS
+/*#ifndef THREADS
 	#define THREADS 2
-#endif
+#endif*/

@@ -3,8 +3,9 @@
 #include <cstdio>
 #include <sstream>
 #include <fstream>
-#include <omp.h>
+//#include <omp.h>
 #include <unistd.h>
+#include<cuda.h>
 
 #define DEBUG 1
 
@@ -65,6 +66,10 @@ void printMatrix(int ** matrix, int size) {
     #include "simd_strassen.cpp"
 #endif
 
+#ifdef alg_cuda
+    #include "simt_strassen.cpp"
+#endif
+
 void mainProccesLoop() {
     #ifdef alg_simd_classic
         trivial(size, matA, matB, matC);
@@ -72,6 +77,11 @@ void mainProccesLoop() {
 
     #ifdef alg_simd_strassen
         matC = strassen(size, matA, matB);
+    #endif
+        
+        
+    #ifdef alg_cuda
+        trivial(size, matA, matB, matC);
     #endif
 }
 
@@ -197,7 +207,7 @@ int main (int argc, char **argv) {
         size = shiftSize(size);
     #endif
     
-	double start = omp_get_wtime();
+    // double start = omp_get_wtime();
     // Run main procces
     mainProccesLoop();
 
@@ -206,17 +216,17 @@ int main (int argc, char **argv) {
         debugMatrix();    
     }*/
     
-	#ifdef DEBUG_PRINT
-    printMatrix(matC, prev_size);
-	#endif
+    #ifdef DEBUG_PRINT
+        printMatrix(matC, prev_size);
+    #endif
 
-	#ifdef RESULT
-    printMatrix(matC, prev_size);
-	#endif
+    #ifdef RESULT
+        printMatrix(matC, prev_size);
+    #endif
 
 
 
-    printf("THREADS: %d \t time: \t %f \n", THREADS, omp_get_wtime()-start); 
+    //printf("THREADS: %d \t time: \t %f \n", THREADS, omp_get_wtime()-start); 
     
     // Clean up data
     cleanUp();
