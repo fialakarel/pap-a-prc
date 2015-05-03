@@ -6,6 +6,7 @@
 //#include <omp.h>
 #include <unistd.h>
 #include<cuda.h>
+#include <cuda_runtime.h>
 
 #define DEBUG 1
 
@@ -67,7 +68,7 @@ void printMatrix(int ** matrix, int size) {
 #endif
 
 #ifdef alg_cuda
-    #include "simt_trivial.cpp"
+    #include "simt_trivial.cu"
 #endif
 
 void mainProccesLoop() {
