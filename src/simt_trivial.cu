@@ -33,6 +33,9 @@ __global__ void mul_gpu(int *A, int *B, int *C, int size) {
 // trivial algorithm
 void trivial(int size, int ** A, int ** B, int ** C) {
  
+ 	clock_t start, end;
+ 	start = clock();
+
  	int *cuda_A;
  	int *cuda_B;
  	int *cuda_C;
@@ -41,7 +44,7 @@ void trivial(int size, int ** A, int ** B, int ** C) {
 
 	int gx;
 	int bx;
-	if (size < 1025) {
+	if (size < 0) {
 		gx = size;
 		bx = size;
 	} else {
@@ -54,13 +57,13 @@ void trivial(int size, int ** A, int ** B, int ** C) {
  	dim3 grid(gx, 1, 1);
  	dim3 block(bx, 1, 1);
 
- 	cout << "pred alokaci" << flush << endl;
+// 	cout << "pred alokaci" << flush << endl;
 
  	cudaMalloc((void**)&cuda_A, sizeof(int)*size*size);
 	cudaMalloc((void**)&cuda_B, sizeof(int)*size*size);
 	cudaMalloc((void**)&cuda_C, sizeof(int)*size*size);
 
-	cout << "pred kopirovanim" << flush << endl;
+//	cout << "pred kopirovanim" << flush << endl;
 
 	for (int i = 0; i < size; i++) {
 //		cout << "pruchod: " << i << flush << endl;
@@ -70,15 +73,15 @@ void trivial(int size, int ** A, int ** B, int ** C) {
 //	cudaMemcpy(cuda_A, A, sizeof(int)*size*size, cudaMemcpyHostToDevice);
 //	cudaMemcpy(cuda_B, B, sizeof(int)*size*size, cudaMemcpyHostToDevice);
 
-	cout << "pred spustenim" << flush << endl;
+//	cout << "pred spustenim" << flush << endl;
  
 	mul_gpu<<< grid, block >>>(cuda_A, cuda_B, cuda_C, size);
 
-	cout << "pred synchronizaci kernelu" << flush << endl;
+//	cout << "pred synchronizaci kernelu" << flush << endl;
  
 	cudaThreadSynchronize();
 
-	cout << "pred dolovanim vysledku" << flush << endl;
+//	cout << "pred dolovanim vysledku" << flush << endl;
  
 //	cudaMemcpy(C, cuda_C, sizeof(int)*size*size, cudaMemcpyDeviceToHost);
 
@@ -88,12 +91,16 @@ void trivial(int size, int ** A, int ** B, int ** C) {
 	}
 
 
-	cout << "pred uvolneni pameti" << flush << endl;
+//	cout << "pred uvolneni pameti" << flush << endl;
  
 	cudaFree(cuda_A);
 	cudaFree(cuda_B);
 	cudaFree(cuda_C);
 
-	cout << "pred ukoncenim" << flush << endl;
+//	cout << "pred ukoncenim" << flush << endl;
+
+	end = clock();
+
+	cout << "Running for " << (double)(end-start)/CLOCKS_PER_SEC << endl << flush;
 
 }
