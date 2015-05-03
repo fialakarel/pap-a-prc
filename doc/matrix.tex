@@ -333,14 +333,72 @@ Pro klasický multiplikační algoritmus je průběh zrychlení pro dynamické i
 Pro Strassenův rekurzivní algoritmus je průběh zrychlení pro dynamické i statické plánování stejný, avšak dynamické plánování dosahuje většího zrychlení.
 
 
+%****************************************
+%****************************************
+%
+%				CUDA
+%****************************************
+%****************************************
+
+
+
 \section{CUDA}
-\subsection{Popis případných úprav algoritmu a jeho implementace, včetně volby datových struktur}
-\subsection{Popis optimalizací pro dosažení efektivní implementace}
-\subsection{Tabulkově a případně graficky zpracované naměřené hodnoty časové složitosti měřených instancí běhu (optimalizované implementace) programu s~popisem instancí dat}
+\subsection{Popis případných úprav algoritmu a jeho implementace}
+
+Základ celého programu zůstal téměř nezměněn. Přidal jsem soubor \textit{simt\_trivial.cu}, který obsahuje celou implementaci (včetně měření) klasického multiplikačního algoritmu pomocí CUDA technologie. \\
+
+Vstupní a výstupní matice jsou v C reprezentovány pomocí 2D pole. Při kopírování matice z paměti procesoru do paměti grafické karty (a naopak) proběhne transformace matice na 1D pole. \\
+
+Všechny výpočty jsou v celočíselné.
+
+
+\subsection{Popis optimalizací}
+
+Snaha o saturaci každého bloku $1024$ vlákny, tedy využití všech $32$ warpů. \\
+
+V implementaci jsem nepoužil \textit{loop unrolling}\footnote{Rozbalení cyklů -- např. počet průchodů cyklu zmenšíme na polovinu a v každém průchodu uděláme dvě operace najednou. Zmenšíme tak režii samotného cyklu vzhledem k potřebnému výpočtu.}.
+
+
+\subsection{Naměřené výsledky}
+
+$N$ je velikosti vstupních matic.
+
+\begin{center}
+\begin{tabular}{ | c || c | c | c | c | }
+\hline
+N    &   čas	\\
+\hline
+\hline
+1000    &   0.20681 	\\ \hline
+2000    &   0.39094 	\\ \hline
+3000    &   0.82996 	\\ \hline
+4000    &   1.27902 	\\ \hline
+5000    &   2.92957 	\\ \hline
+6000    &   4.28045 	\\ \hline
+7000    &   7.42563 	\\ \hline
+8000    &   8.21492 	\\ \hline
+\end{tabular}
+\end{center}
+
+\pagebreak
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{graph/cuda/cuda1.png}
+\caption{Klasický multiplikativní algoritmus -- CUDA implementace}
+\label{cuda1}
+\end{figure}
+
+
 \subsection{Analýza a hodnocení vlastností dané implementace programu}
 
+Tato implementace algoritmu je násobně rychlejší než předchozí implementace na CPU. Zrychlení je velké, ale není lineární. \\
+
+Algoritmus není efektivní ohledně přístupu do paměti. Zde by pomohlo například použití \textit{loop unrolling} nebo algoritmus přepracovat tak, aby uměl vhodně využít sdílenou pamět.
+
+
 \section{Závěr}
+
 \subsection{Porovnání výkonnosti všech tří verzí}
+
 
 
 
