@@ -67,7 +67,7 @@ void printMatrix(int ** matrix, int size) {
 #endif
 
 #ifdef alg_cuda
-    #include "simt_strassen.cpp"
+    #include "simt_trivial.cpp"
 #endif
 
 void mainProccesLoop() {
