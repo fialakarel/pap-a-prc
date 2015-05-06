@@ -399,7 +399,7 @@ N    &   čas	\\
 
 Tato implementace algoritmu je násobně rychlejší než předchozí implementace na CPU. Zrychlení je velké. \\
 
-Algoritmus není efektivní ohledně přístupu do paměti. Zde by pomohlo například použití \textit{loop unrolling} nebo algoritmus přepracovat tak, aby uměl vhodně využít sdílenou paměť.
+Algoritmus není efektivní ohledně přístupu do paměti. Zde by pomohlo například použití \textit{loop unrolling} nebo algoritmus přepracovat tak, aby uměl vhodně využít sdílenou pamět.
 
 
 \section{Závěr}
