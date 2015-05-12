@@ -5,7 +5,7 @@
 #include <fstream>
 //#include <omp.h>
 #include <unistd.h>
-#include<cuda.h>
+#include <cuda.h>
 #include <cuda_runtime.h>
 
 #define DEBUG 1
@@ -71,6 +71,12 @@ void printMatrix(int ** matrix, int size) {
     #include "simt_trivial.cu"
 #endif
 
+#ifdef alg_cudas
+    #include "simt_strassen.cu"
+#endif
+
+
+
 void mainProccesLoop() {
     #ifdef alg_simd_classic
         trivial(size, matA, matB, matC);
@@ -84,6 +90,11 @@ void mainProccesLoop() {
     #ifdef alg_cuda
         trivial(size, matA, matB, matC);
     #endif
+
+    #ifdef alg_cudas
+        matC = strassen(size, matA, matB);
+    #endif
+}
 }
 
 void debugMatrix() {
@@ -207,6 +218,11 @@ int main (int argc, char **argv) {
     #ifdef alg_simd_strassen
         size = shiftSize(size);
     #endif
+
+    #ifdef alg_cudas
+        size = shiftSize(size);
+    #endif
+ 
     
     // double start = omp_get_wtime();
     // Run main procces
