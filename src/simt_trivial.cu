@@ -1,3 +1,5 @@
+#define GPU_TH 100
+
 
 __global__ void mul_gpu(int *A, int *B, int *C, int size) {
 
@@ -5,7 +7,7 @@ __global__ void mul_gpu(int *A, int *B, int *C, int size) {
 	// C je vystupni matice
 	// size je dim A
 
-	int g = blockIdx.x*1024 + threadIdx.x;
+	int g = blockIdx.x*GPU_TH + threadIdx.x;
 
 	//int block = blockIdx.x;
 //	int thread = threadIdx.x;
@@ -13,17 +15,24 @@ __global__ void mul_gpu(int *A, int *B, int *C, int size) {
 	int x = g/size;
 	int y = g % size;
 
+	int x0 = 2*x+0;
+	int x1 = 2*x+1;
+
 //	printf("Hello %dx%d\n",block, thread);
 
 	int tmp = 0;
+	int tmp2 = 0;
 
 	for (int i = 0; i < size; i++) {
 //		tmp += A[block*size + i] * B[i*size + thread];
-		tmp += A[x*size + i] * B[i*size + y];
+		tmp  += A[x0*size + i] * B[i*size + y];
+		tmp2 += A[x1*size + i] * B[i*size + y];
+	
 	}
 
 	// vystup
-	C[x*size + y] = tmp;
+	C[x0*size + y] = tmp;
+	C[x1*size + y] = tmp2;
 
 	// synchronizace pred prepnutim -- jinak dava spatny vysledek?
 	__syncthreads();
@@ -34,6 +43,7 @@ __global__ void mul_gpu(int *A, int *B, int *C, int size) {
 void trivial(int size, int ** A, int ** B, int ** C) {
  
  	clock_t start, end;
+ 	clock_t start_gpu, end_gpu;
  	start = clock();
 
  	int *cuda_A;
@@ -49,9 +59,9 @@ void trivial(int size, int ** A, int ** B, int ** C) {
 		bx = size;
 	} else {
 		// zajistit saturaci
-		bx = 1024;
+		bx = GPU_TH;
 
-		gx = ((size*size)/1024) + 1;
+		gx = (((size*size)/GPU_TH) + 1)/2;
 	}
 
  	dim3 grid(gx, 1, 1);
@@ -75,7 +85,11 @@ void trivial(int size, int ** A, int ** B, int ** C) {
 
 //	cout << "pred spustenim" << flush << endl;
  
+ 	start_gpu = clock();
+
 	mul_gpu<<< grid, block >>>(cuda_A, cuda_B, cuda_C, size);
+
+	end_gpu = clock();
 
 //	cout << "pred synchronizaci kernelu" << flush << endl;
  
@@ -102,5 +116,6 @@ void trivial(int size, int ** A, int ** B, int ** C) {
 	end = clock();
 
 	cout << "Running for " << (double)(end-start)/CLOCKS_PER_SEC << endl << flush;
+	cout << "GPU running for " << (double)(end_gpu-start_gpu)/CLOCKS_PER_SEC << endl << flush;
 
 }

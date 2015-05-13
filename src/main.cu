@@ -95,7 +95,7 @@ void mainProccesLoop() {
         matC = strassen(size, matA, matB);
     #endif
 }
-}
+
 
 void debugMatrix() {
     cout << endl << "matA: " << endl;
