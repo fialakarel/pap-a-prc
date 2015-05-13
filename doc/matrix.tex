@@ -401,7 +401,75 @@ Tato implementace algoritmu je násobně rychlejší než předchozí implementa
 
 Algoritmus není efektivní ohledně přístupu do paměti. Zde by pomohlo například použití \textit{loop unrolling} nebo algoritmus přepracovat tak, aby uměl vhodně využít sdílenou paměť.
 
+\pagebreak
+\section{CUDA podruhé}
 
+\subsection{Klasický multiplikativní alg. -- rozbalení cyklu}
+Jednou z možných optimalizací je rozbalení cyklů a tím snížení režie. Na následujícím grafu je vidět snížení výpočetního času o $\approx 25\%$ při rozbalení cyklu pro $i=2$.
+
+%\pagebreak
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{graph/cuda2/unroll/cuda-unroll.png}
+\caption{Rozbalení cyklu pro $i=2$}
+\label{cuda-rozbaleni}
+\end{figure}
+
+\pagebreak
+\subsection{Klasický multiplikativní alg. -- použití sdílené paměti}
+Další z možných optimalizací je použití sdílené paměti a tím snížení latence, která vzniká při přistupu do globální paměti. Na následujícím grafu je vidět snížení výpočetního času na $\approx 1/4$.
+
+\medskip
+To velmi předčilo mé očekávání. Zároveň je vidět, že při použití sdílené paměti mají naměřené výsledky menší odchylku měření -- \uv{čáry v grafu jsou plynulejší}.
+
+\medskip
+Na dalším obrázku je pak vidět detailnější rozdíl mezi \uv{velikosti sdíleného okénka} pro velikosti 8, 16, 24 a 32.
+
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{graph/cuda2/shared/cuda-shared.png}
+\caption{Použití sdílené paměti}
+\label{cuda-shared}
+\end{figure}
+
+\pagebreak
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{graph/cuda2/shared/cuda-shared-2.png}
+\caption{Použití sdílené paměti -- detail}
+\label{cuda-shared-detail}
+\end{figure}
+
+\pagebreak
+\subsection{Strassenův algoritmus v CUDA}
+
+Implementovaný algoritmus bych nazval \uv{pseudo-Strassenův algoritmus}. Poprvé rozdělí matice po vzoru Strassena a na GPU je vypočte s pomocí klasického multiplikativní algoritmu.
+
+\medskip
+Snažil jsem se většinu operací realizovat na GPU -- násobení (využil jsem již implementovaný klasický multiplikativní algoritmus), sčítání a odčítání matic.
+
+\subsubsection{Popis činnosti implementace}
+
+\begin{itemize}
+\item dvě vstupní matice na CPU rozdělí na čtvrtiny \\-- tedy má $4+4$ podmatice
+\item tyto podmatice nahraje do paměti GPU a na CPU je smaže
+\item inicializuje a alokuje prostor pro pomocné matice výpočtu \\-- jejich 17
+\item na GPU naplní pomocné matice pomocí \textit{add\_gpu()} a \textit{sub\_gpu()}
+\item tyto pomocné matice pronásobí po vzoru Strassena, ale již klasickým multiplikativním algoritmem \textit{mul\_gpu()}
+\item částečné výsledky opět pomocí \textit{add\_gpu()} a \textit{sub\_gpu()} sečte/odečte
+\item čtyři výsledné podmatice nahraje zpět k CPU a spojí do jedné výstupní matice
+\end{itemize}
+
+
+\subsubsection{Výkonost}
+
+Algoritmus nevyužívá sdílenou paměť ani rozbalení cyklů. Také se zcela jistě projevuje zdržení při nevhodném volání kernelu (celkem 25-krát) a následná bariéra \textit{cudaThreadSynchronize()}.
+
+\begin{figure}[h]
+\includegraphics[width=\textwidth]{graph/cuda2/cuda-strassen.png}
+\caption{Porovnání implementovaných algoritmů v CUDA}
+\label{cuda-strassen}
+\end{figure}
+
+
+\pagebreak
 \section{Závěr}
 
 \subsection{Porovnání výkonnosti všech tří verzí}
