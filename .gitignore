@@ -8,7 +8,7 @@ sample/*
 
 matrix.aux
 matrix.log
-matrix.pdf
+#matrix.pdf
 matrix.synctex.gz
 matrix.toc
 
