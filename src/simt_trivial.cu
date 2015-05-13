@@ -1,4 +1,5 @@
-#define GPU_TH 100
+//#define GPU_TH 1024
+//#define TILE 8
 
 
 __global__ void mul_gpu(int *A, int *B, int *C, int size) {
@@ -7,32 +8,37 @@ __global__ void mul_gpu(int *A, int *B, int *C, int size) {
 	// C je vystupni matice
 	// size je dim A
 
-	int g = blockIdx.x*GPU_TH + threadIdx.x;
+	__shared__ int As[TILE][TILE];
+	__shared__ int Bs[TILE][TILE];
 
-	//int block = blockIdx.x;
-//	int thread = threadIdx.x;
 
-	int x = g/size;
-	int y = g % size;
+	int bx = blockIdx.x;
+	int by = blockIdx.y;
 
-	int x0 = 2*x+0;
-	int x1 = 2*x+1;
+	int tx = threadIdx.x;
+	int ty = threadIdx.y;
+
+
+	int x = by * TILE + ty;
+	int y = bx * TILE + tx;
 
 //	printf("Hello %dx%d\n",block, thread);
 
 	int tmp = 0;
-	int tmp2 = 0;
 
-	for (int i = 0; i < size; i++) {
-//		tmp += A[block*size + i] * B[i*size + thread];
-		tmp  += A[x0*size + i] * B[i*size + y];
-		tmp2 += A[x1*size + i] * B[i*size + y];
-	
+	for (int k = 0; k < size/TILE; k++) {
+		As[ty][tx] = A[x*size + k*TILE + tx];
+		Bs[ty][tx] = B[y + (k*TILE + ty)*size];
+	}
+
+	__syncthreads();
+
+	for (int i = 0; i < TILE; i++) {
+		tmp  += As[ty][i] * Bs[i][tx];	
 	}
 
 	// vystup
-	C[x0*size + y] = tmp;
-	C[x1*size + y] = tmp2;
+	C[x*size + y] = tmp;
 
 	// synchronizace pred prepnutim -- jinak dava spatny vysledek?
 	__syncthreads();
@@ -52,8 +58,9 @@ void trivial(int size, int ** A, int ** B, int ** C) {
 
 	// nastaveni spusteni
 
-	int gx;
-	int bx;
+	//int gx;
+	//int bx;
+	/*
 	if (size < 0) {
 		gx = size;
 		bx = size;
@@ -62,10 +69,10 @@ void trivial(int size, int ** A, int ** B, int ** C) {
 		bx = GPU_TH;
 
 		gx = (((size*size)/GPU_TH) + 1)/2;
-	}
+	}*/
 
- 	dim3 grid(gx, 1, 1);
- 	dim3 block(bx, 1, 1);
+ 	dim3 grid(size/TILE, size/TILE, 1);
+ 	dim3 block(TILE, TILE, 1);
 
 // 	cout << "pred alokaci" << flush << endl;
 
