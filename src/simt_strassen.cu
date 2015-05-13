@@ -403,8 +403,53 @@ matrix mpWrap(matrix a, matrix b) {
 
 	return c;
 }
+        
+// *****************************************************
+        
+__global__ void mul_gpu(int *A, int *B, int *C, int size) {
+
+        // A, B jsou vstupni matice
+        // C je vystupni matice
+        // size je dim A
 
 
+
+        int bx = blockIdx.x;
+        int by = blockIdx.y;
+
+        int tx = threadIdx.x;
+        int ty = threadIdx.y;
+
+
+        int x = by * TILE + ty;
+        int y = bx * TILE + tx;
+
+//      printf("Hello %dx%d\n",block, thread);
+
+        int tmp = 0;
+
+        for (int k = 0; k < size/TILE; k++) {
+                As[ty][tx] = A[x*size + k*TILE + tx];
+                Bs[ty][tx] = B[y + (k*TILE + ty)*size];
+        }
+
+        __syncthreads();
+
+        for (int i = 0; i < TILE; i++) {
+                tmp  += As[ty][i] * Bs[i][tx];  
+        }
+
+        // vystup
+        C[x*size + y] = tmp;
+
+        // synchronizace pred prepnutim -- jinak dava spatny vysledek?
+        __syncthreads();
+
+}
+        
+        
+
+// *****************************************************
 // strassen algorithm
 int ** strassen(int size, int ** A, int ** B) {
     
@@ -416,7 +461,163 @@ int ** strassen(int size, int ** A, int ** B) {
     b.p = B;
     b.size = size;
     
-    matrix c = mpWrap(a, b);
+    matrix c;
+    
+    clock_t start, end;
+    clock_t start_gpu, end_gpu;
+    start = clock();
+    
+    int *cuda_A0;
+    int *cuda_A1;
+    int *cuda_A2;
+    int *cuda_A3;
+    
+    int *cuda_B0;
+    int *cuda_B1;
+    int *cuda_B2;
+    int *cuda_B3;
+    
+    int *cuda_C0;
+    int *cuda_C1;
+    int *cuda_C2;
+    int *cuda_C3;
+    
+    matrix a0, a1, a2, a3, b0, b1, b2, b3, c0, c1, c2, c3;
+    a0 = getPart(0, 0, a);
+    a1 = getPart(0, 1, a);
+    a2 = getPart(1, 0, a);
+    a3 = getPart(1, 1, a);
+    
+    b0 = getPart(0, 0, b);
+    b1 = getPart(0, 1, b);
+    b2 = getPart(1, 0, b);
+    b3 = getPart(1, 1, b);
+    
+    // nastaveni spusteni
+    
+    //int gx;
+    //int bx;
+    
+    if (size < 0) {
+        gx = size;
+        bx = size;
+    } else {
+        // zajistit saturaci
+        bx = 1024;
+    
+        gx = (((size*size)/1024) + 1)/4;
+    }
+    
+    dim3 grid(gx, 1, 1);
+    dim3 block(bx, 1, 1);
+    
+    //      cout << "pred alokaci" << flush << endl;
+    
+    cudaMalloc((void**)&cuda_A0, sizeof(int)*((size*size)/4));
+    cudaMalloc((void**)&cuda_A1, sizeof(int)*((size*size)/4));
+    cudaMalloc((void**)&cuda_A2, sizeof(int)*((size*size)/4));
+    cudaMalloc((void**)&cuda_A3, sizeof(int)*((size*size)/4));
+    
+    cudaMalloc((void**)&cuda_B0, sizeof(int)*((size*size)/4));
+    cudaMalloc((void**)&cuda_B1, sizeof(int)*((size*size)/4));
+    cudaMalloc((void**)&cuda_B2, sizeof(int)*((size*size)/4));
+    cudaMalloc((void**)&cuda_B3, sizeof(int)*((size*size)/4));
+    
+    cudaMalloc((void**)&cuda_C0, sizeof(int)*((size*size)/4));
+    cudaMalloc((void**)&cuda_C1, sizeof(int)*((size*size)/4));
+    cudaMalloc((void**)&cuda_C2, sizeof(int)*((size*size)/4));
+    cudaMalloc((void**)&cuda_C3, sizeof(int)*((size*size)/4));
+    
+    //      cout << "pred kopirovanim" << flush << endl;
+
+    
+    
+    for (int i = 0; i < size/2; i++) {
+        //              cout << "pruchod: " << i << flush << endl;
+            cudaMemcpy(&cuda_A0[i*(size/2)], a0[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
+            cudaMemcpy(&cuda_A1[i*(size/2)], a1[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
+            cudaMemcpy(&cuda_A2[i*(size/2)], a2[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
+            cudaMemcpy(&cuda_A3[i*(size/2)], a3[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
+
+            
+            cudaMemcpy(&cuda_B0[i*(size/2)], b0[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
+            cudaMemcpy(&cuda_B1[i*(size/2)], b1[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
+            cudaMemcpy(&cuda_B2[i*(size/2)], b2[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
+            cudaMemcpy(&cuda_B3[i*(size/2)], b3[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
+        }
+    //      cudaMemcpy(cuda_A, A, sizeof(int)*size*size, cudaMemcpyHostToDevice);
+    //      cudaMemcpy(cuda_B, B, sizeof(int)*size*size, cudaMemcpyHostToDevice);
+    
+    //      cout << "pred spustenim" << flush << endl;
+    
+    start_gpu = clock();
+    
+    // gpu vypocet
+    mul_gpu<<< grid, block >>>(cuda_A0, cuda_B0, cuda_C0, size/2);
+    mul_gpu<<< grid, block >>>(cuda_A1, cuda_B1, cuda_C1, size/2);
+    mul_gpu<<< grid, block >>>(cuda_A2, cuda_B2, cuda_C2, size/2);
+    mul_gpu<<< grid, block >>>(cuda_A3, cuda_B3, cuda_C3, size/2);
+
+    
+    end_gpu = clock();
+    
+    //      cout << "pred synchronizaci kernelu" << flush << endl;
+    
+    cudaThreadSynchronize();
+    
+    //      cout << "pred dolovanim vysledku" << flush << endl;
+    
+    //      cudaMemcpy(C, cuda_C, sizeof(int)*size*size, cudaMemcpyDeviceToHost);
+    
+    c0.p = Alloc(a.size/2);
+    c0.size = a.size/2;
+    c1.p = Alloc(a.size/2);
+    c1.size = a.size/2;
+    c2.p = Alloc(a.size/2);
+    c2.size = a.size/2;
+    c3.p = Alloc(a.size/2);
+    c3.size = a.size/2;
+    
+    for (int i = 0; i < size/2; i++) {
+        //              cout << "pruchod: " << i << flush << endl;
+            cudaMemcpy(c0[i], &cuda_C0[i*(size/2)], sizeof(int)*(size/2), cudaMemcpyDeviceToHost);
+            cudaMemcpy(c1[i], &cuda_C1[i*(size/2)], sizeof(int)*(size/2), cudaMemcpyDeviceToHost);
+            cudaMemcpy(c2[i], &cuda_C2[i*(size/2)], sizeof(int)*(size/2), cudaMemcpyDeviceToHost);
+            cudaMemcpy(c3[i], &cuda_C3[i*(size/2)], sizeof(int)*(size/2), cudaMemcpyDeviceToHost);
+        }
+    
+    c.p = Alloc(a.size);
+    c.size = a.size;
+    
+    setPart(0, 0, &c, c0);
+    setPart(0, 1, &c, c1);
+    setPart(1, 0, &c, c2);
+    setPart(1, 1, &c, c3);
+    
+    //      cout << "pred uvolneni pameti" << flush << endl;
+    
+    cudaFree(cuda_A0);
+    cudaFree(cuda_A1);
+    cudaFree(cuda_A2);
+    cudaFree(cuda_A3);
+    cudaFree(cuda_B0);
+    cudaFree(cuda_B1);
+    cudaFree(cuda_B2);
+    cudaFree(cuda_B3);
+    cudaFree(cuda_C0);
+    cudaFree(cuda_C1);
+    cudaFree(cuda_C2);
+    cudaFree(cuda_C3);
+    
+    //      cout << "pred ukoncenim" << flush << endl;
+    
+    end = clock();
+    
+    cout << "Running for " << (double)(end-start)/CLOCKS_PER_SEC << endl << flush;
+    cout << "GPU running for " << (double)(end_gpu-start_gpu)/CLOCKS_PER_SEC << endl << flush;
+    
+    
+    
     
     
     return c.p;
