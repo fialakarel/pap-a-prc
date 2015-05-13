@@ -135,6 +135,11 @@ int ** loadFromFile(int size, string filePath) {
         #ifdef alg_simd_strassen
             size = shiftSize(size);
         #endif
+
+        #ifdef alg_cudas
+            size = shiftSize(size);
+        #endif
+ 
         int ** matrix = allocMatrix(size);
         
         

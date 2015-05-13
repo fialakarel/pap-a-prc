@@ -9,6 +9,66 @@ int ** Alloc(int size) {
     return allocMatrix(size);
 }
 
+__global__ void mul_gpu(int *A, int *B, int *C, int size) {
+
+        // A, B jsou vstupni matice
+        // C je vystupni matice
+        // size je dim A
+
+        int g = blockIdx.x*1024 + threadIdx.x;
+
+        //int block = blockIdx.x;
+//      int thread = threadIdx.x;
+
+        int x = g/size;
+        int y = g % size;
+
+//      printf("Hello %dx%d\n",block, thread);
+
+        int tmp = 0;
+
+        for (int i = 0; i < size; i++) {
+//              tmp += A[block*size + i] * B[i*size + thread];
+                tmp += A[x*size + i] * B[i*size + y];
+        }
+
+        // vystup
+        C[x*size + y] = tmp;
+
+        // synchronizace pred prepnutim -- jinak dava spatny vysledek?
+        __syncthreads();
+
+}
+
+__global__ void add_gpu(int *A, int *B, int *C, int size) {
+
+        // A, B jsou vstupni matice
+        // C je vystupni matice
+        // size je dim A
+        int g = blockIdx.x*1024 + threadIdx.x;
+        
+        // vystup
+        if ( g < size ) {
+            C[g] = A[g] + B[g];
+        }
+        
+        __syncthreads();
+}  
+
+__global__ void sub_gpu(int *A, int *B, int *C, int size) {
+
+        // A, B jsou vstupni matice
+        // C je vystupni matice
+        // size je dim A
+        int g = blockIdx.x*1024 + threadIdx.x;
+        
+        // vystup
+        if ( g < size ) {
+            C[g] = A[g] - B[g];
+        }
+        
+        __syncthreads();
+}  
 
 matrix multM(matrix a, matrix b) {
     matrix c;
@@ -89,12 +149,19 @@ void cleanM(matrix x) {
 
 matrix s_alg(matrix a, matrix b) {
     
-    if ( a.size <= STRASSEN_THRESHOLD ) {
-        return multM(a, b);
-    }
+    // mereni
+    clock_t start, end;
+    clock_t start_gpu, end_gpu;
+    start = clock();
+    int size = a.size/2;
     
-    //printMatrix(a.p, a.size);
+    // nastaveni spusteni
+    int gx = ((size*size)/1024 + 1);
+    int bx = 1024;
+    dim3 grid(gx, 1, 1);
+    dim3 block(bx, 1, 1);
     
+    // pocatecni rozdeleni
     matrix a11 = getPart(0, 0, a);
     matrix a12 = getPart(0, 1, a);
     matrix a21 = getPart(1, 0, a);
@@ -105,25 +172,32 @@ matrix s_alg(matrix a, matrix b) {
     matrix b21 = getPart(1, 0, b);
     matrix b22 = getPart(1, 1, b);
     
-    matrix t1 = addM(a11, a22);
-    matrix t2 = addM(b11, b22);
-    matrix t3 = addM(a21, a22);
-    matrix t4 = subM(b12, b22);
-    matrix t5 = subM(b21, b11);
-    matrix t6 = addM(a11, a12);
-    matrix t7 = subM(a21, a11);
-    matrix t8 = addM(b11, b12);
-    matrix t9 = subM(a12, a22);
-    matrix t10 = addM(b21, b22);
-
-    matrix m1 = s_alg(t1, t2);
-    matrix m2 = s_alg(t3, b11);
-    matrix m3 = s_alg(a11, t4);
-    matrix m4 = s_alg(a22, t5);
-    matrix m5 = s_alg(t6, b22);
-    matrix m6 = s_alg(t7, t8);
-    matrix m7 = s_alg(t9, t10);
-
+    int *cuda_a11, *cuda_a12, *cuda_a21, *cuda_a22, *cuda_b11, *cuda_b12, *cuda_b21, *cuda_b22;
+    
+    cudaMalloc((void**)&cuda_a11, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_a12, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_a21, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_a22, sizeof(int)*size*size);
+    
+    cudaMalloc((void**)&cuda_b11, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_b12, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_b21, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_b22, sizeof(int)*size*size);    
+    
+    // dostanu 2*4 matice do GPU pameti
+    for (int i = 0; i < size; i++) {
+        cudaMemcpy(&cuda_a11[i*size], a11.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+        cudaMemcpy(&cuda_a12[i*size], a12.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+        cudaMemcpy(&cuda_a21[i*size], a21.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+        cudaMemcpy(&cuda_a22[i*size], a22.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+        
+        cudaMemcpy(&cuda_b11[i*size], b11.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+        cudaMemcpy(&cuda_b12[i*size], b12.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+        cudaMemcpy(&cuda_b21[i*size], b21.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+        cudaMemcpy(&cuda_b22[i*size], b22.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+    }
+    
+    // toto uz nepotrebuji na CPU
     cleanM(a11);
     cleanM(a12);
     cleanM(a21);
@@ -132,324 +206,284 @@ matrix s_alg(matrix a, matrix b) {
     cleanM(b12);
     cleanM(b21);
     cleanM(b22);
+
+    // inicializace
+    int *cuda_t1, *cuda_t2, *cuda_m1, *cuda_t3, *cuda_m2,
+        *cuda_t4, *cuda_m3, *cuda_t5, *cuda_m4, *cuda_t6,
+        *cuda_m5, *cuda_t7, *cuda_t8, *cuda_m6, *cuda_t9, *cuda_t10, *cuda_m7;
     
-    cleanM(t1);
-    cleanM(t2);
-    cleanM(t3);
-    cleanM(t4);
-    cleanM(t5);
-    cleanM(t6);
-    cleanM(t7);
-    cleanM(t8);
-    cleanM(t9);
-    cleanM(t10);
+    // a alokace pameti pro pomocne matice
+    cudaMalloc((void**)&cuda_t1, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_t2, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_m1, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_t3, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_m2, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_t4, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_m3, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_t5, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_m4, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_t6, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_m5, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_t7, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_t8, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_m6, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_t9, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_t10, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_m7, sizeof(int)*size*size);
+    
+    start_gpu = clock();
+    add_gpu<<< grid, block >>>(cuda_a11, cuda_a22, cuda_t1, size);
+    cudaThreadSynchronize();
+    add_gpu<<< grid, block >>>(cuda_b11, cuda_b22, cuda_t2, size);
+    cudaThreadSynchronize();
+    add_gpu<<< grid, block >>>(cuda_a21, cuda_a22, cuda_t3, size);
+    cudaThreadSynchronize();
+    sub_gpu<<< grid, block >>>(cuda_b12, cuda_b22, cuda_t4, size);
+    cudaThreadSynchronize();
+    sub_gpu<<< grid, block >>>(cuda_b21, cuda_b11, cuda_t5, size);
+    cudaThreadSynchronize();
+    add_gpu<<< grid, block >>>(cuda_a11, cuda_a12, cuda_t6, size);
+    cudaThreadSynchronize();
+    sub_gpu<<< grid, block >>>(cuda_a21, cuda_a11, cuda_t7, size);
+    cudaThreadSynchronize();
+    add_gpu<<< grid, block >>>(cuda_b11, cuda_b12, cuda_t8, size);
+    cudaThreadSynchronize();
+    sub_gpu<<< grid, block >>>(cuda_a12, cuda_a22, cuda_t9, size);
+    cudaThreadSynchronize();
+    add_gpu<<< grid, block >>>(cuda_b21, cuda_b22, cuda_t10, size);
+    cudaThreadSynchronize();
+    
+//     matrix t1 = addM(a11, a22);
+//     matrix t2 = addM(b11, b22);
+//     matrix t3 = addM(a21, a22);
+//     matrix t4 = subM(b12, b22);
+//     matrix t5 = subM(b21, b11);
+//     matrix t6 = addM(a11, a12);
+//     matrix t7 = subM(a21, a11);
+//     matrix t8 = addM(b11, b12);
+//     matrix t9 = subM(a12, a22);
+//     matrix t10 = addM(b21, b22);
+    
+    //cout << "po alokaci" << endl << flush;
+    
+//     for (int i = 0; i < size; i++) {
+//         cudaMemcpy(&cuda_t1[i*size], t1.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+//         cudaMemcpy(&cuda_t2[i*size], t2.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+//         cudaMemcpy(&cuda_t3[i*size], t3.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+//         cudaMemcpy(&cuda_b11[i*size], b11.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+//         cudaMemcpy(&cuda_a11[i*size], a11.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+//         cudaMemcpy(&cuda_t4[i*size], t4.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+//         cudaMemcpy(&cuda_a22[i*size], a22.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+//         cudaMemcpy(&cuda_t5[i*size], t5.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+//         cudaMemcpy(&cuda_t6[i*size], t6.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+//         cudaMemcpy(&cuda_b22[i*size], b22.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+//         cudaMemcpy(&cuda_t7[i*size], t7.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+//         cudaMemcpy(&cuda_t8[i*size], t8.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+//         cudaMemcpy(&cuda_t9[i*size], t9.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+//         cudaMemcpy(&cuda_t10[i*size], t10.p[i], sizeof(int)*size, cudaMemcpyHostToDevice);
+//     }
+    //cout << "po memcpy" << endl << flush;
+    
+//     matrix m1 = s_alg(t1, t2);
+//     matrix m2 = s_alg(t3, b11);
+//     matrix m3 = s_alg(a11, t4);
+//     matrix m4 = s_alg(a22, t5);
+//     matrix m5 = s_alg(t6, b22);
+//     matrix m6 = s_alg(t7, t8);
+//     matrix m7 = s_alg(t9, t10);
+
+
+    
+    mul_gpu<<< grid, block >>>(cuda_t1, cuda_t2, cuda_m1, size);
+    cudaThreadSynchronize();
+    mul_gpu<<< grid, block >>>(cuda_t3, cuda_b11, cuda_m2, size);
+    cudaThreadSynchronize();
+    mul_gpu<<< grid, block >>>(cuda_a11, cuda_t4, cuda_m3, size);
+    cudaThreadSynchronize();
+    mul_gpu<<< grid, block >>>(cuda_a22, cuda_t5, cuda_m4, size);
+    cudaThreadSynchronize();
+    mul_gpu<<< grid, block >>>(cuda_t6, cuda_b22, cuda_m5, size);
+    cudaThreadSynchronize();
+    mul_gpu<<< grid, block >>>(cuda_t7, cuda_t8, cuda_m6, size);
+    cudaThreadSynchronize();
+    mul_gpu<<< grid, block >>>(cuda_t9, cuda_t10, cuda_m7, size);
+    cudaThreadSynchronize();
+    
+    
+//     matrix m1, m2, m3, m4, m5, m6, m7;
+//     m1.p = Alloc(size);
+//     m1.size = size;
+//     m2.p = Alloc(size);
+//     m2.size = size;
+//     m3.p = Alloc(size);
+//     m3.size = size;
+//     m4.p = Alloc(size);
+//     m4.size = size;
+//     m5.p = Alloc(size);
+//     m5.size = size;
+//     m6.p = Alloc(size);
+//     m6.size = size;
+//     m7.p = Alloc(size);
+//     m7.size = size;
+    
+    
+//     for (int i = 0; i < size; i++) {
+//     //              cout << "pruchod: " << i << flush << endl;
+//         cudaMemcpy(m1.p[i], &cuda_m1[i*size], sizeof(int)*size, cudaMemcpyDeviceToHost);
+//         cudaMemcpy(m2.p[i], &cuda_m2[i*size], sizeof(int)*size, cudaMemcpyDeviceToHost);
+//         cudaMemcpy(m3.p[i], &cuda_m3[i*size], sizeof(int)*size, cudaMemcpyDeviceToHost);
+//         cudaMemcpy(m4.p[i], &cuda_m4[i*size], sizeof(int)*size, cudaMemcpyDeviceToHost);
+//         cudaMemcpy(m5.p[i], &cuda_m5[i*size], sizeof(int)*size, cudaMemcpyDeviceToHost);
+//         cudaMemcpy(m6.p[i], &cuda_m6[i*size], sizeof(int)*size, cudaMemcpyDeviceToHost);
+//         cudaMemcpy(m7.p[i], &cuda_m7[i*size], sizeof(int)*size, cudaMemcpyDeviceToHost);
+//     }
+//     cudaThreadSynchronize();
+    
+//     printMatrix(m1.p, m1.size);
+//     printMatrix(m2.p, m2.size);
+//     printMatrix(m3.p, m3.size);
+//     printMatrix(m4.p, m4.size);
+//     printMatrix(m5.p, m5.size);
+//     printMatrix(m6.p, m6.size);
+//     printMatrix(m7.p, m7.size);
+
+    // ******************************
+    // pokracuji normalne
+
+    
+//     cleanM(t1);
+//     cleanM(t2);
+//     cleanM(t3);
+//     cleanM(t4);
+//     cleanM(t5);
+//     cleanM(t6);
+//     cleanM(t7);
+//     cleanM(t8);
+//     cleanM(t9);
+//     cleanM(t10);
+    
+    cudaFree(cuda_t1);
+    cudaFree(cuda_t2);
+    cudaFree(cuda_t3);
+    cudaFree(cuda_b11);
+    cudaFree(cuda_a11);
+    cudaFree(cuda_t4);
+    cudaFree(cuda_a22);
+    cudaFree(cuda_t5);
+    cudaFree(cuda_t6);
+    cudaFree(cuda_b22);
+    cudaFree(cuda_t7);
+    cudaFree(cuda_t8);
+    cudaFree(cuda_t9);
+    cudaFree(cuda_t10);
 
     
     matrix c;
     c.p = Alloc(a.size);
     c.size = a.size;
     
-    matrix rx1 = addM(m1, m4);
-    matrix rx2 = addM(rx1, m7);
-    matrix rx3 = subM(rx2, m5);
+    int *cuda_rx1,*cuda_rx2, *cuda_rx3, *cuda_r2, *cuda_r3, *cuda_ry1, *cuda_ry2, *cuda_ry3;
     
-    matrix r2 = addM(m3, m5);
-    matrix r3 = addM(m2, m4);
+    cudaMalloc((void**)&cuda_rx1, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_rx2, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_rx3, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_r2, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_r3, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_ry1, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_ry2, sizeof(int)*size*size);
+    cudaMalloc((void**)&cuda_ry3, sizeof(int)*size*size);
     
-    matrix ry1 = subM(m1, m2);
-    matrix ry2 = addM(ry1, m3);
-    matrix ry3 = addM(ry2, m6);
+    add_gpu<<< grid, block >>>(cuda_m1, cuda_m4, cuda_rx1, size);
+    cudaThreadSynchronize();
+    add_gpu<<< grid, block >>>(cuda_rx1, cuda_m7, cuda_rx2, size);
+    cudaThreadSynchronize();
+    sub_gpu<<< grid, block >>>(cuda_rx2, cuda_m5, cuda_rx3, size);
+    cudaThreadSynchronize();
     
+    add_gpu<<< grid, block >>>(cuda_m3, cuda_m5, cuda_r2, size);
+    cudaThreadSynchronize();
+    add_gpu<<< grid, block >>>(cuda_m2, cuda_m4, cuda_r3, size);
+    cudaThreadSynchronize();
+    
+    sub_gpu<<< grid, block >>>(cuda_m1, cuda_m2, cuda_ry1, size);
+    cudaThreadSynchronize();
+    add_gpu<<< grid, block >>>(cuda_ry1, cuda_m3, cuda_ry2, size);
+    cudaThreadSynchronize();
+    add_gpu<<< grid, block >>>(cuda_ry2, cuda_m6, cuda_ry3, size);
+    cudaThreadSynchronize();
+    
+//     matrix rx1 = addM(m1, m4);
+//     matrix rx2 = addM(rx1, m7);
+//     matrix rx3 = subM(rx2, m5);
+//     
+//     matrix r2 = addM(m3, m5);
+//     matrix r3 = addM(m2, m4);
+//     
+//     matrix ry1 = subM(m1, m2);
+//     matrix ry2 = addM(ry1, m3);
+//     matrix ry3 = addM(ry2, m6);
+
+
+    end_gpu = clock();
+    cudaFree(cuda_m1);    
+    cudaFree(cuda_m2);
+    cudaFree(cuda_m3);
+    cudaFree(cuda_m4);
+    cudaFree(cuda_m5);
+    cudaFree(cuda_m6);
+    cudaFree(cuda_m7);
+    
+    matrix rx3, r2, r3, ry3;
+    rx3.p = Alloc(size);
+    rx3.size = size;
+    r2.p = Alloc(size);
+    r2.size = size;
+    r3.p = Alloc(size);
+    r3.size = size;
+    ry3.p = Alloc(size);
+    ry3.size = size;
+    
+    for (int i = 0; i < size; i++) {
+        cudaMemcpy(rx3.p[i], &cuda_rx3[i*size], sizeof(int)*size, cudaMemcpyDeviceToHost);
+        cudaMemcpy(r2.p[i], &cuda_r2[i*size], sizeof(int)*size, cudaMemcpyDeviceToHost);
+        cudaMemcpy(r3.p[i], &cuda_r3[i*size], sizeof(int)*size, cudaMemcpyDeviceToHost);
+        cudaMemcpy(ry3.p[i], &cuda_ry3[i*size], sizeof(int)*size, cudaMemcpyDeviceToHost);
+    }
     
     setPart(0, 0, &c, rx3);
     setPart(0, 1, &c, r2);
     setPart(1, 0, &c, r3);
     setPart(1, 1, &c, ry3);
     
-    cleanM(m1);
-    cleanM(m2);
-    cleanM(m3);
-    cleanM(m4);
-    cleanM(m5);
-    cleanM(m6);
-    cleanM(m7);
+//     cleanM(m1);
+//     cleanM(m2);
+//     cleanM(m3);
+//     cleanM(m4);
+//     cleanM(m5);
+//     cleanM(m6);
+//     cleanM(m7);
     
-    cleanM(rx1);
-    cleanM(rx2);
+//     cleanM(rx1);
+//     cleanM(rx2);
     cleanM(rx3);
     cleanM(r2);
     cleanM(r3);
-    cleanM(ry1);
-    cleanM(ry2);
+//     cleanM(ry1);
+//     cleanM(ry2);
     cleanM(ry3);
+    
+    
+    // vypis mereni
+    end = clock();    
+    cout << "Running for " << (double)(end-start)/CLOCKS_PER_SEC << endl << flush;
+    cout << "GPU running for " << (double)(end_gpu-start_gpu)/CLOCKS_PER_SEC << endl << flush;
     
  
     return c;
 
 }
-
-matrix mpWrap(matrix a, matrix b) {
-
-	// multiprocess here
-	int depth = 2;
-	int parts = 16;
-        
-    int conf[64][2] =
-    {
-    	{0,0},
-    	{1,2},
-    	{4,8},
-    	{5,10},
-    	{0,1},
-    	{1,3},
-    	{4,9},
-    	{5,11},
-    	{0,4},
-    	{1,6},
-    	{4,12},
-    	{5,14},
-    	{0,5},
-    	{1,7},
-    	{4,13},
-    	{5,15},
-    	{2,0},
-    	{3,2},
-    	{6,8},
-    	{7,10},
-    	{2,1},
-    	{3,3},
-    	{6,9},
-    	{7,11},
-    	{2,4},
-    	{3,6},
-    	{6,12},
-    	{7,14},
-    	{2,5},
-    	{3,7},
-    	{6,13},
-    	{7,15},
-    	{8,0},
-    	{9,2},
-    	{12,8},
-    	{13,10},
-    	{8,1},
-    	{9,3},
-    	{12,9},
-    	{13,11},
-    	{8,4},
-    	{9,6},
-    	{12,12},
-    	{13,14},
-    	{8,5},
-    	{9,7},
-    	{12,13},
-    	{13,15},
-    	{10,0},
-    	{11,2},
-    	{14,8},
-    	{15,10},
-    	{10,1},
-    	{11,3},
-    	{14,9},
-    	{15,11},
-    	{10,4},
-    	{11,6},
-    	{14,12},
-    	{15,14},
-    	{10,5},
-    	{11,7},
-    	{14,13},
-    	{15,15}
-    };
-
-	// pripravit nove, mensi matice
-	matrix ** e = new matrix*[depth+1];
-	matrix ** f = new matrix*[depth+1];
-
-	// alokovat nové matice
-	int ti = 0;
-	for (int i = 1; i < parts+1; i = i*4) {
-		e[ti] = new matrix[i];
-		f[ti] = new matrix[i];
-		ti++;
-	}
-
-	// pripravit vstupni pole 
-	e[0][0] = a;
-	f[0][0] = b;
-
-	int pos = 1;
-	int pointer = 0;
-
-	// rozpulit matice na PARTS do hloubky DEPTH
-	for (int i = 1; i < depth+1; i++) {
-
-		pointer = 0;
-
-		for (int j = 0; j < pos; j++) {
-
-			e[i][pointer] = getPart(0, 0, e[i-1][j]);
-			e[i][pointer+1] = getPart(0, 1, e[i-1][j]);
-			e[i][pointer+2] = getPart(1, 0, e[i-1][j]);
-			e[i][pointer+3] = getPart(1, 1, e[i-1][j]);
-	
-			f[i][pointer] = getPart(0, 0, f[i-1][j]);
-			f[i][pointer+1] = getPart(0, 1, f[i-1][j]);
-			f[i][pointer+2] = getPart(1, 0, f[i-1][j]);
-			f[i][pointer+3] = getPart(1, 1, f[i-1][j]);
-
-			pointer = pointer + 4;
-		}
-
-		pos = pos * 4;
-    }
-
-#ifdef DEBUG_PRINT
-	cout << "a.size: " << a.size << endl;
-	for (int j = 0 ; j < parts; j++) {
-		cout << "A[" << depth << "][" << j << "]" << endl;
-		printMatrix(e[depth][j].p, e[depth][j].size);
-		cout << "B[" << depth << "][" << j << "]" << endl;
-		printMatrix(f[depth][j].p, f[depth][j].size);
-	
-	}
-	cout << "*******" << endl;
-#endif
-
-
-
-    // nastavit pocet vláken
-    omp_set_num_threads(THREADS);
-
-
-	// inicializace vysledných matic
-    matrix * r = new matrix[parts*4];
-    int i;
-	
-	// paralelni zpracovani matic
-	#pragma omp parallel for shared(r, i) schedule(dynamic,1)
-	for (i = 0; i < parts*4; i++) {
-
-		r[i] = s_alg(e[depth][conf[i][0]], f[depth][conf[i][1]]);
-//		cout << "i: " << i << " ei: " << ei << " fi: " << fi << endl << flush;
-	}
-
-	
-#ifdef DEBUG_PRINT
-	for (int j = 0; j < parts*4; j++) {
-		printMatrix(r[j].p, r[j].size);
-	}
-	cout << "*******" << endl;
-#endif
-
-
-	// prvni redukce 64 > 32
-	#pragma omp parallel for shared(r, i) schedule(dynamic,1)
-	for (i = 0; i < parts*4 ; i = i + 2) {
-		r[i] = addM(r[i], r[i+1]);
-	}
-
-	// druha redukce 32 -> 16
-	#pragma omp parallel for shared(r, i) schedule(dynamic,1)
-	for (i = 0; i < parts*4; i = i + 4) {
-		r[i] = addM(r[i], r[i+2]);
-	}
-
-//	matrix * cx = new matrix[parts];
-#ifdef DEBUG_PRINT
-	for (int j = 0; j < parts * 4; j = j + 4) {
-		printMatrix(r[j].p, r[j].size);
-	}
-#endif
-	matrix t[4];
-
-	// skladani 16 -> 4
-	#pragma omp parallel for shared(t, r, i) schedule(dynamic,1)
-	for (i = 0; i < 4; i++) {
-		t[i].p = Alloc(a.size/2);
-		t[i].size = a.size/2;
-
-		int tmp = 0;
-		
-		if (i > 2) {
-			tmp = 16;
-		}
-
-	    setPart(0, 0, &t[i], r[tmp + i*8 +  0]);
-	    setPart(0, 1, &t[i], r[tmp + i*8 +  4]);
-	    setPart(1, 0, &t[i], r[tmp + i*8 + 16]);
-	    setPart(1, 1, &t[i], r[tmp + i*8 + 20]);
-	}
-
-#ifdef DEBUG_PRINT
-	cout << "skladani" << endl;
-	for (int j = 0; j < 4; j++) {
-		printMatrix(t[j].p, t[j].size);
-	}
-	cout << "*******" << endl;
-#endif
-
-
-
-	matrix c;
-	c.p = Alloc(a.size);
-    c.size = a.size;
-    
-    setPart(0, 0, &c, t[0]);
-    setPart(0, 1, &c, t[1]);
-    setPart(1, 0, &c, t[2]);
-    setPart(1, 1, &c, t[3]);
     
 
-	return c;
-}
-        
-// *****************************************************
-        
-__global__ void mul_gpu(int *A, int *B, int *C, int size) {
-
-        // A, B jsou vstupni matice
-        // C je vystupni matice
-        // size je dim A
-
-
-
-        int bx = blockIdx.x;
-        int by = blockIdx.y;
-
-        int tx = threadIdx.x;
-        int ty = threadIdx.y;
-
-
-        int x = by * TILE + ty;
-        int y = bx * TILE + tx;
-
-//      printf("Hello %dx%d\n",block, thread);
-
-        int tmp = 0;
-
-        for (int k = 0; k < size/TILE; k++) {
-                As[ty][tx] = A[x*size + k*TILE + tx];
-                Bs[ty][tx] = B[y + (k*TILE + ty)*size];
-        }
-
-        __syncthreads();
-
-        for (int i = 0; i < TILE; i++) {
-                tmp  += As[ty][i] * Bs[i][tx];  
-        }
-
-        // vystup
-        C[x*size + y] = tmp;
-
-        // synchronizace pred prepnutim -- jinak dava spatny vysledek?
-        __syncthreads();
-
-}
-        
-        
-
-// *****************************************************
 // strassen algorithm
 int ** strassen(int size, int ** A, int ** B) {
     
@@ -461,164 +495,7 @@ int ** strassen(int size, int ** A, int ** B) {
     b.p = B;
     b.size = size;
     
-    matrix c;
-    
-    clock_t start, end;
-    clock_t start_gpu, end_gpu;
-    start = clock();
-    
-    int *cuda_A0;
-    int *cuda_A1;
-    int *cuda_A2;
-    int *cuda_A3;
-    
-    int *cuda_B0;
-    int *cuda_B1;
-    int *cuda_B2;
-    int *cuda_B3;
-    
-    int *cuda_C0;
-    int *cuda_C1;
-    int *cuda_C2;
-    int *cuda_C3;
-    
-    matrix a0, a1, a2, a3, b0, b1, b2, b3, c0, c1, c2, c3;
-    a0 = getPart(0, 0, a);
-    a1 = getPart(0, 1, a);
-    a2 = getPart(1, 0, a);
-    a3 = getPart(1, 1, a);
-    
-    b0 = getPart(0, 0, b);
-    b1 = getPart(0, 1, b);
-    b2 = getPart(1, 0, b);
-    b3 = getPart(1, 1, b);
-    
-    // nastaveni spusteni
-    
-    //int gx;
-    //int bx;
-    
-    if (size < 0) {
-        gx = size;
-        bx = size;
-    } else {
-        // zajistit saturaci
-        bx = 1024;
-    
-        gx = (((size*size)/1024) + 1)/4;
-    }
-    
-    dim3 grid(gx, 1, 1);
-    dim3 block(bx, 1, 1);
-    
-    //      cout << "pred alokaci" << flush << endl;
-    
-    cudaMalloc((void**)&cuda_A0, sizeof(int)*((size*size)/4));
-    cudaMalloc((void**)&cuda_A1, sizeof(int)*((size*size)/4));
-    cudaMalloc((void**)&cuda_A2, sizeof(int)*((size*size)/4));
-    cudaMalloc((void**)&cuda_A3, sizeof(int)*((size*size)/4));
-    
-    cudaMalloc((void**)&cuda_B0, sizeof(int)*((size*size)/4));
-    cudaMalloc((void**)&cuda_B1, sizeof(int)*((size*size)/4));
-    cudaMalloc((void**)&cuda_B2, sizeof(int)*((size*size)/4));
-    cudaMalloc((void**)&cuda_B3, sizeof(int)*((size*size)/4));
-    
-    cudaMalloc((void**)&cuda_C0, sizeof(int)*((size*size)/4));
-    cudaMalloc((void**)&cuda_C1, sizeof(int)*((size*size)/4));
-    cudaMalloc((void**)&cuda_C2, sizeof(int)*((size*size)/4));
-    cudaMalloc((void**)&cuda_C3, sizeof(int)*((size*size)/4));
-    
-    //      cout << "pred kopirovanim" << flush << endl;
-
-    
-    
-    for (int i = 0; i < size/2; i++) {
-        //              cout << "pruchod: " << i << flush << endl;
-            cudaMemcpy(&cuda_A0[i*(size/2)], a0[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
-            cudaMemcpy(&cuda_A1[i*(size/2)], a1[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
-            cudaMemcpy(&cuda_A2[i*(size/2)], a2[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
-            cudaMemcpy(&cuda_A3[i*(size/2)], a3[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
-
-            
-            cudaMemcpy(&cuda_B0[i*(size/2)], b0[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
-            cudaMemcpy(&cuda_B1[i*(size/2)], b1[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
-            cudaMemcpy(&cuda_B2[i*(size/2)], b2[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
-            cudaMemcpy(&cuda_B3[i*(size/2)], b3[i], sizeof(int)*(size/2), cudaMemcpyHostToDevice);
-        }
-    //      cudaMemcpy(cuda_A, A, sizeof(int)*size*size, cudaMemcpyHostToDevice);
-    //      cudaMemcpy(cuda_B, B, sizeof(int)*size*size, cudaMemcpyHostToDevice);
-    
-    //      cout << "pred spustenim" << flush << endl;
-    
-    start_gpu = clock();
-    
-    // gpu vypocet
-    mul_gpu<<< grid, block >>>(cuda_A0, cuda_B0, cuda_C0, size/2);
-    mul_gpu<<< grid, block >>>(cuda_A1, cuda_B1, cuda_C1, size/2);
-    mul_gpu<<< grid, block >>>(cuda_A2, cuda_B2, cuda_C2, size/2);
-    mul_gpu<<< grid, block >>>(cuda_A3, cuda_B3, cuda_C3, size/2);
-
-    
-    end_gpu = clock();
-    
-    //      cout << "pred synchronizaci kernelu" << flush << endl;
-    
-    cudaThreadSynchronize();
-    
-    //      cout << "pred dolovanim vysledku" << flush << endl;
-    
-    //      cudaMemcpy(C, cuda_C, sizeof(int)*size*size, cudaMemcpyDeviceToHost);
-    
-    c0.p = Alloc(a.size/2);
-    c0.size = a.size/2;
-    c1.p = Alloc(a.size/2);
-    c1.size = a.size/2;
-    c2.p = Alloc(a.size/2);
-    c2.size = a.size/2;
-    c3.p = Alloc(a.size/2);
-    c3.size = a.size/2;
-    
-    for (int i = 0; i < size/2; i++) {
-        //              cout << "pruchod: " << i << flush << endl;
-            cudaMemcpy(c0[i], &cuda_C0[i*(size/2)], sizeof(int)*(size/2), cudaMemcpyDeviceToHost);
-            cudaMemcpy(c1[i], &cuda_C1[i*(size/2)], sizeof(int)*(size/2), cudaMemcpyDeviceToHost);
-            cudaMemcpy(c2[i], &cuda_C2[i*(size/2)], sizeof(int)*(size/2), cudaMemcpyDeviceToHost);
-            cudaMemcpy(c3[i], &cuda_C3[i*(size/2)], sizeof(int)*(size/2), cudaMemcpyDeviceToHost);
-        }
-    
-    c.p = Alloc(a.size);
-    c.size = a.size;
-    
-    setPart(0, 0, &c, c0);
-    setPart(0, 1, &c, c1);
-    setPart(1, 0, &c, c2);
-    setPart(1, 1, &c, c3);
-    
-    //      cout << "pred uvolneni pameti" << flush << endl;
-    
-    cudaFree(cuda_A0);
-    cudaFree(cuda_A1);
-    cudaFree(cuda_A2);
-    cudaFree(cuda_A3);
-    cudaFree(cuda_B0);
-    cudaFree(cuda_B1);
-    cudaFree(cuda_B2);
-    cudaFree(cuda_B3);
-    cudaFree(cuda_C0);
-    cudaFree(cuda_C1);
-    cudaFree(cuda_C2);
-    cudaFree(cuda_C3);
-    
-    //      cout << "pred ukoncenim" << flush << endl;
-    
-    end = clock();
-    
-    cout << "Running for " << (double)(end-start)/CLOCKS_PER_SEC << endl << flush;
-    cout << "GPU running for " << (double)(end_gpu-start_gpu)/CLOCKS_PER_SEC << endl << flush;
-    
-    
-    
-    
+    matrix c = s_alg(a, b);    
     
     return c.p;
     
